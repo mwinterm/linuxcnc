@@ -91,6 +91,9 @@ static int loadJoint(int joint, EmcIniFile *jointIniFile)
     int volatile_home;
     int locking_indexer;
     int absolute_encoder;
+    int distance_coded;
+    int distance_coded_n;
+    double distance_coded_sp;
     int comp_file_type; //type for the compensation file. type==0 means nom, forw, rev. 
     double maxVelocity;
     double maxAcceleration;
@@ -194,6 +197,12 @@ static int loadJoint(int joint, EmcIniFile *jointIniFile)
         jointIniFile->Find(&locking_indexer, "LOCKING_INDEXER", jointString);
         absolute_encoder = false;
         jointIniFile->Find(&absolute_encoder, "HOME_ABSOLUTE_ENCODER", jointString);
+        distance_coded = false;
+        jointIniFile->Find(&distance_coded, "HOME_DISTANCE_CODED", jointString);
+        distance_coded_n = 0;
+        jointIniFile->Find(&distance_coded_n, "HOME_DISTANCE_CODED_N", jointString);
+        distance_coded_sp = 0.0;
+        jointIniFile->Find(&distance_coded_sp, "HOME_DISTANCE_CODED_SP", jointString);
         // issue NML message to set all params
         if (0 != emcJointSetHomingParams(joint, home, offset
                                         ,final_vel, search_vel, latch_vel
@@ -205,6 +214,9 @@ static int loadJoint(int joint, EmcIniFile *jointIniFile)
                                         ,volatile_home
                                         ,locking_indexer
                                         ,absolute_encoder
+                                        ,distance_coded
+                                        ,distance_coded_n
+                                        ,distance_coded_sp
                                         )) {
             return -1;
         }

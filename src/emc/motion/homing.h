@@ -25,7 +25,9 @@ extern void set_joint_homing_params(int    jno,
                                     double home_latch_vel,
                                     int    home_flags,
                                     int    home_sequence,
-                                    bool   volatile_home
+                                    bool   volatile_home, 
+                                    int    distance_coded_n, 
+                                    double distance_coded_sp
                                     );
 
 // updateable interface params (for inihal pin changes typically):

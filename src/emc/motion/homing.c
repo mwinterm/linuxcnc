@@ -10,7 +10,7 @@
 *
 * Copyright (c) 2004 All rights reserved.
 ********************************************************************/
-
+#include <stdio.h>
 #include "rtapi.h"
 #include "rtapi_math.h"
 #include "motion.h"
@@ -96,6 +96,8 @@ typedef struct {
   int          home_sequence;        // intfc, updateable
   bool         volatile_home;        // intfc
   bool         home_is_synchronized;
+  int          home_distance_coded_n;
+  double       home_distance_coded_sp;
 } home_local_data;
 
 static  home_local_data H[EMCMOT_MAX_JOINTS];
@@ -218,6 +220,8 @@ void homing_init(void)
         H[i].home_flags      =  0;
         H[i].home_sequence   = -1;
         H[i].volatile_home   =  0;
+		H[i].home_distance_coded_n   =  0;
+		H[i].home_distance_coded_sp   =  0.0;
     }
 }
 
@@ -310,7 +314,9 @@ void set_joint_homing_params(int    jno,
                              double home_latch_vel,
                              int    home_flags,
                              int    home_sequence,
-                             bool   volatile_home
+                             bool   volatile_home, 
+							 int    distance_coded_n, 
+							 double distance_coded_sp
                              )
 {
     H[jno].home_offset     = offset;
@@ -321,6 +327,8 @@ void set_joint_homing_params(int    jno,
     H[jno].home_flags      = home_flags;
     H[jno].home_sequence   = home_sequence;
     H[jno].volatile_home   = volatile_home;
+	H[jno].home_distance_coded_n   = distance_coded_n;
+	H[jno].home_distance_coded_sp   = distance_coded_sp;
     update_home_is_synchronized();
 }
 
@@ -379,6 +387,7 @@ home_sequence_state_t get_home_sequence_state(void) {
 // SEQUENCE management
 void do_homing_sequence(void)
 {
+	//printf("B: do_homing_sequence() \n");
     int i,ii;
     int special_case_sync_all;
     int seen = 0;
@@ -573,6 +582,16 @@ void do_homing_sequence(void)
 // HOMING management
 void do_homing(void)
 {
+	printf("A: do_homing() start \n");
+	if(H[0].home_flags & HOME_DISTANCE_CODED){
+		printf("Distance coded: 1 \n");
+		int aaa = H[0].home_distance_coded_n;
+		printf("Distance coded N: %d\n" , H[0].home_distance_coded_n);
+		printf("Distance coded SP: %lf \n", H[0].home_distance_coded_sp);
+	}else{
+		printf("Distance coded: 0");
+	}
+
     int joint_num;
     emcmot_joint_t *joint;
     double offset, tmp;
