@@ -82,6 +82,7 @@ typedef struct {
     hal_float_t *motor_offset;	/* RPI: motor offset, for checking homing stability */
     hal_float_t *motor_pos_cmd;	/* WPI: commanded position, with comp */
     hal_float_t *motor_pos_fb;	/* RPI: position feedback, with comp */
+    hal_float_t *motor_pos_raw_fb;	/* RPI: position feedback, without comp */
     hal_float_t *joint_pos_cmd;	/* WPI: commanded position w/o comp, mot ofs */
     hal_float_t *joint_pos_fb;	/* RPI: position feedback, w/o comp */
     hal_float_t *f_error;	/* RPI: following error */
