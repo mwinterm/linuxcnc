@@ -18,7 +18,9 @@
 #include "mot_priv.h"
 #include "homing.h"
 
+
 #define ABS(x) (((x) < 0) ? -(x) : (x))
+#define SGN(x) (((x) < 0) ? -1 : 1)
 
 // Mark strings for translation, but defer translation to userspace
 #define _(s) (s)
@@ -384,6 +386,15 @@ home_sequence_state_t get_home_sequence_state(void) {
    return sequence_state;
 }
 
+int distance_coded_offset(double raw_trigger_1, double raw_trigger_2, int nominal_steps, int over_sampling, int index_pulswidth){
+
+	int Mrr = (round(raw_trigger_1) - round(raw_trigger_2))/over_sampling;
+	int R = 2*ABS(Mrr)-nominal_steps;
+	int P1 = ((ABS(R) - SGN(R) - 1)*nominal_steps/2 + (SGN(R)-SGN(Mrr))*ABS(Mrr)/2)*over_sampling + SGN(Mrr)*index_pulswidth/2;
+
+	return P1;
+}
+
 // SEQUENCE management
 void do_homing_sequence(void)
 {
@@ -582,20 +593,21 @@ void do_homing_sequence(void)
 // HOMING management
 void do_homing(void)
 {
-	printf("A: do_homing() start \n");
-	if(H[0].home_flags & HOME_DISTANCE_CODED){
-		printf("Distance coded: 1 \n");
-		int aaa = H[0].home_distance_coded_n;
-		printf("Distance coded N: %d\n" , H[0].home_distance_coded_n);
-		printf("Distance coded SP: %lf \n", H[0].home_distance_coded_sp);
-	}else{
-		printf("Distance coded: 0");
-	}
+	// printf("A: do_homing() start \n");
+	// if(H[0].home_flags & HOME_DISTANCE_CODED){
+	// 	printf("Distance coded: 1 \n");
+	// 	printf("Distance coded N: %d\n" , H[0].home_distance_coded_n);
+	// 	printf("Distance coded SP: %lf \n", H[0].home_distance_coded_sp);
+	// }else{
+	// 	printf("Distance coded: 0");
+	// }
+	
 
     int joint_num;
     emcmot_joint_t *joint;
-    double offset, tmp;
+    double offset, tmp, raw_trigger_1, raw_trigger_2;
     int home_sw_active, homing_flag;
+	int nr_ref_marks = 0;
 
     homing_flag = 0;
     if (emcmotStatus->motion_state != EMCMOT_MOTION_FREE) {
@@ -615,7 +627,13 @@ void do_homing(void)
 	if (H[joint_num].home_state != HOME_IDLE) {
 	    homing_flag = 1; /* at least one joint is homing */
 	}
+	printf("blablabla\n");
+	printf("Pin motor position raw: %lf \n", joint->motor_pos_raw_fb);
 	
+	int test_position; 
+	test_position = distance_coded_offset(23117, 12577, 1000, 20, 2);
+	printf("Position: %d\n" , test_position);
+
 	/* when an joint is homing, 'check_for_faults()' ignores its limit
 	   switches, so that this code can do the right thing with them. Once
 	   the homing process is finished, the 'check_for_faults()' resumes
@@ -1109,32 +1127,52 @@ void do_homing(void)
 		break;
 
 	    case HOME_SET_INDEX_POSITION:
-		/* This state is called when the encoder has been reset at
-		   the index pulse position.  It sets the current joint 
-		   position to 'home_offset', which is the location of the
-		   index pulse in joint coordinates. */
-		/* set the current position to 'home_offset' */
-		joint->motor_offset = - H[joint_num].home_offset;
-		joint->pos_fb = joint->motor_pos_fb -
-		    (joint->backlash_filt + joint->motor_offset);
-		joint->pos_cmd = joint->pos_fb;
-		joint->free_tp.curr_pos = joint->pos_fb;
 
-		if (H[joint_num].home_flags & HOME_INDEX_NO_ENCODER_RESET) {
-		   /* Special case: encoder does not reset on index pulse.
-		      This moves the internal position but does not affect
-		      the motor position */
-		   offset = H[joint_num].home_offset - joint->pos_fb;
-		   joint->pos_cmd          += offset;
-		   joint->pos_fb           += offset;
-		   joint->free_tp.curr_pos += offset;
-		   joint->motor_offset     -= offset;
-		}
+			if((H[joint_num].home_flags & HOME_DISTANCE_CODED) && (nr_ref_marks < 1)) {
 
-		/* next state */
-		H[joint_num].home_state = HOME_FINAL_MOVE_START;
-		immediate_state = 1;
-		break;
+        		raw_trigger_1 = joint->motor_pos_raw_fb - joint->pos_fb;
+        		++nr_ref_marks;
+        		H[joint_num].home_state = HOME_INDEX_SEARCH_START; //sent it back to index mark search
+
+    		}else if((H[joint_num].home_flags & HOME_DISTANCE_CODED)  && (nr_ref_marks < 2)){
+
+        		raw_trigger_2 = joint->motor_pos_raw_fb - joint->pos_fb;
+        		++nr_ref_marks;
+
+        		// calculate and set the 'home_offset' based on raw_trigger_pos_1, raw_trigger_pos_2 and current_pos
+				int over_sampling = 20;
+				int index_pulse_width = 2;
+				int position;
+				position = distance_coded_offset(raw_trigger_1, raw_trigger_2, H[joint_num].home_distance_coded_n, over_sampling, index_pulse_width);
+
+			}else{
+				/* This state is called when the encoder has been reset at
+				the index pulse position.  It sets the current joint 
+				position to 'home_offset', which is the location of the
+				index pulse in joint coordinates. */
+				/* set the current position to 'home_offset' */
+				joint->motor_offset = - H[joint_num].home_offset;
+				joint->pos_fb = joint->motor_pos_fb -
+					(joint->backlash_filt + joint->motor_offset);
+				joint->pos_cmd = joint->pos_fb;
+				joint->free_tp.curr_pos = joint->pos_fb;
+
+				if (H[joint_num].home_flags & HOME_INDEX_NO_ENCODER_RESET) {
+				/* Special case: encoder does not reset on index pulse.
+				This moves the internal position but does not affect
+				the motor position */
+				offset = H[joint_num].home_offset - joint->pos_fb;
+				joint->pos_cmd          += offset;
+				joint->pos_fb           += offset;
+				joint->free_tp.curr_pos += offset;
+				joint->motor_offset     -= offset;
+				}
+
+				/* next state */
+				H[joint_num].home_state = HOME_FINAL_MOVE_START;
+				immediate_state = 1;
+				break;
+			}	
 
 	    case HOME_FINAL_MOVE_START:
 		/* This state is called once the joint coordinate system is
