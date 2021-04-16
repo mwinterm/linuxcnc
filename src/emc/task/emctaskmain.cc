@@ -1733,7 +1733,7 @@ static int emcTaskIssueCommand(NMLmsg * cmd)
 					set_homing_params_msg->absolute_encoder, 
 					set_homing_params_msg->distance_coded, 
 					set_homing_params_msg->distance_coded_n, 
-					set_homing_params_msg->distance_coded_sp);
+					set_homing_params_msg->distance_coded_os);
 	break;
 
     case EMC_JOINT_SET_FERROR_TYPE:

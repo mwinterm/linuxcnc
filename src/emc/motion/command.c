@@ -699,7 +699,7 @@ void emcmotCommandHandler(void *arg, long servo_period)
 	                            emcmotCommand->home_sequence,
 	                            emcmotCommand->volatile_home, 
 								emcmotCommand->distance_coded_n, 
-								emcmotCommand->distance_coded_sp
+								emcmotCommand->distance_coded_os
 	                           );
 	    break;
 

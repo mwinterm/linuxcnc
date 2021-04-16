@@ -18,7 +18,6 @@
 #include "mot_priv.h"
 #include "homing.h"
 
-
 #define ABS(x) (((x) < 0) ? -(x) : (x))
 #define SGN(x) (((x) < 0) ? -1 : 1)
 
@@ -99,7 +98,7 @@ typedef struct {
   bool         volatile_home;        // intfc
   bool         home_is_synchronized;
   int          home_distance_coded_n;
-  double       home_distance_coded_sp;
+  double       home_distance_coded_os;
 } home_local_data;
 
 static  home_local_data H[EMCMOT_MAX_JOINTS];
@@ -223,7 +222,7 @@ void homing_init(void)
         H[i].home_sequence   = -1;
         H[i].volatile_home   =  0;
 		H[i].home_distance_coded_n   =  0;
-		H[i].home_distance_coded_sp   =  0.0;
+		H[i].home_distance_coded_os   =  0.0;
     }
 }
 
@@ -318,7 +317,7 @@ void set_joint_homing_params(int    jno,
                              int    home_sequence,
                              bool   volatile_home, 
 							 int    distance_coded_n, 
-							 double distance_coded_sp
+							 double distance_coded_os
                              )
 {
     H[jno].home_offset     = offset;
@@ -330,7 +329,7 @@ void set_joint_homing_params(int    jno,
     H[jno].home_sequence   = home_sequence;
     H[jno].volatile_home   = volatile_home;
 	H[jno].home_distance_coded_n   = distance_coded_n;
-	H[jno].home_distance_coded_sp   = distance_coded_sp;
+	H[jno].home_distance_coded_os   = distance_coded_os;
     update_home_is_synchronized();
 }
 
@@ -386,7 +385,7 @@ home_sequence_state_t get_home_sequence_state(void) {
    return sequence_state;
 }
 
-int distance_coded_offset(double raw_trigger_1, double raw_trigger_2, int nominal_steps, int over_sampling, int index_pulswidth){
+int distance_coded_position(double raw_trigger_1, double raw_trigger_2, int nominal_steps, int over_sampling, int index_pulswidth){
 
 	int Mrr = (round(raw_trigger_1) - round(raw_trigger_2))/over_sampling;
 	int R = 2*ABS(Mrr)-nominal_steps;
@@ -398,7 +397,6 @@ int distance_coded_offset(double raw_trigger_1, double raw_trigger_2, int nomina
 // SEQUENCE management
 void do_homing_sequence(void)
 {
-	//printf("B: do_homing_sequence() \n");
     int i,ii;
     int special_case_sync_all;
     int seen = 0;
@@ -593,15 +591,6 @@ void do_homing_sequence(void)
 // HOMING management
 void do_homing(void)
 {
-	// printf("A: do_homing() start \n");
-	// if(H[0].home_flags & HOME_DISTANCE_CODED){
-	// 	printf("Distance coded: 1 \n");
-	// 	printf("Distance coded N: %d\n" , H[0].home_distance_coded_n);
-	// 	printf("Distance coded SP: %lf \n", H[0].home_distance_coded_sp);
-	// }else{
-	// 	printf("Distance coded: 0");
-	// }
-	
 
     int joint_num;
     emcmot_joint_t *joint;
@@ -631,7 +620,7 @@ void do_homing(void)
 	printf("Pin motor position raw: %lf \n", joint->motor_pos_raw_fb);
 	
 	int test_position; 
-	test_position = distance_coded_offset(23117, 12577, 1000, 20, 2);
+	test_position = distance_coded_position(23117, 12577, 1000, 20, 2);
 	printf("Position: %d\n" , test_position);
 
 	/* when an joint is homing, 'check_for_faults()' ignores its limit
@@ -1143,7 +1132,7 @@ void do_homing(void)
 				int over_sampling = 20;
 				int index_pulse_width = 2;
 				int position;
-				position = distance_coded_offset(raw_trigger_1, raw_trigger_2, H[joint_num].home_distance_coded_n, over_sampling, index_pulse_width);
+				position = distance_coded_position(raw_trigger_1, raw_trigger_2, H[joint_num].home_distance_coded_n, over_sampling, index_pulse_width);
 
 			}else{
 				/* This state is called when the encoder has been reset at
