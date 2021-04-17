@@ -283,7 +283,8 @@ int emcJointSetHomingParams(int joint, double home, double offset, double home_f
 			   int use_index, int encoder_does_not_reset,
 			   int ignore_limits, int is_shared,
 			   int sequence,int volatile_home, int locking_indexer,int absolute_encoder, 
-               int distance_coded, int distance_coded_n, double distance_coded_os)
+               int distance_coded, int distance_coded_n, int distance_coded_os, 
+               int distance_coded_pw, double encoder_scale)
 {
 #ifdef ISNAN_TRAP
     if (std::isnan(home) || std::isnan(offset) || std::isnan(home_final_vel) ||
@@ -309,6 +310,8 @@ int emcJointSetHomingParams(int joint, double home, double offset, double home_f
     emcmotCommand.volatile_home = volatile_home;
     emcmotCommand.distance_coded_n = distance_coded_n;
     emcmotCommand.distance_coded_os = distance_coded_os;
+    emcmotCommand.distance_coded_pw = distance_coded_pw;
+    emcmotCommand.encoder_scale = encoder_scale;
     if (use_index) {
 	emcmotCommand.flags |= HOME_USE_INDEX;
     }

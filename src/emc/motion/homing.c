@@ -98,7 +98,9 @@ typedef struct {
   bool         volatile_home;        // intfc
   bool         home_is_synchronized;
   int          home_distance_coded_n;
-  double       home_distance_coded_os;
+  int          home_distance_coded_os;
+  int		   home_distance_coded_pw;
+  double       encoder_scale;
 } home_local_data;
 
 static  home_local_data H[EMCMOT_MAX_JOINTS];
@@ -222,7 +224,9 @@ void homing_init(void)
         H[i].home_sequence   = -1;
         H[i].volatile_home   =  0;
 		H[i].home_distance_coded_n   =  0;
-		H[i].home_distance_coded_os   =  0.0;
+		H[i].home_distance_coded_os   =  0;
+		H[i].home_distance_coded_pw   =  2;
+		H[i].encoder_scale   =  1.0;
     }
 }
 
@@ -317,7 +321,9 @@ void set_joint_homing_params(int    jno,
                              int    home_sequence,
                              bool   volatile_home, 
 							 int    distance_coded_n, 
-							 double distance_coded_os
+							 int distance_coded_os, 
+							 int distance_coded_pw, 
+							 double encoder_scale
                              )
 {
     H[jno].home_offset     = offset;
@@ -330,6 +336,8 @@ void set_joint_homing_params(int    jno,
     H[jno].volatile_home   = volatile_home;
 	H[jno].home_distance_coded_n   = distance_coded_n;
 	H[jno].home_distance_coded_os   = distance_coded_os;
+	H[jno].home_distance_coded_pw   = distance_coded_pw;
+	H[jno].encoder_scale   = encoder_scale;
     update_home_is_synchronized();
 }
 
@@ -385,11 +393,27 @@ home_sequence_state_t get_home_sequence_state(void) {
    return sequence_state;
 }
 
-int distance_coded_position(double raw_trigger_1, double raw_trigger_2, int nominal_steps, int over_sampling, int index_pulswidth){
+int distance_coded_position(double raw_trigger_1, double raw_trigger_2, 
+							int nominal_steps, int over_sampling, 
+							int index_pulswidth){
+	/* This function calculates the absolut position of the second trigger signal 
+	on a distance coded glasscale (e.g. Heidenhain LS***C) as a integer number of 
+	signal pulses after interpolation and quadrature if enabled. 'raw_trigger_1' is
+	the raw encoder position of the first index-mark found during homing and 
+	'raw_trigger_2' that of the second one. 'nominal_steps' is the nominal number
+	of analog signals (before interpolation and quadrature) between constant space 
+	series of index mark on the glasscale (approximately twice the distance between
+	two neighbouring index marks). 'over_sampling' defines how many signals LinuxCNC
+	receives while travling over one analog signal period i.e. the interpolation 
+	factor times four if quadrature is enabled. 'index_pulswidth' is the width of 
+	the index-signal after interpolation and quadrature in units of regular distance
+	pulses (typically the value is two). */
 
 	int Mrr = (round(raw_trigger_1) - round(raw_trigger_2))/over_sampling;
 	int R = 2*ABS(Mrr)-nominal_steps;
-	int P1 = ((ABS(R) - SGN(R) - 1)*nominal_steps/2 + (SGN(R)-SGN(Mrr))*ABS(Mrr)/2)*over_sampling + SGN(Mrr)*index_pulswidth/2;
+	int P1 = ((ABS(R) - SGN(R) - 1)*nominal_steps/2 
+			+ (SGN(R)-SGN(Mrr))*ABS(Mrr)/2)*over_sampling 
+			+ SGN(Mrr)*index_pulswidth/2;
 
 	return P1;
 }
@@ -1118,22 +1142,32 @@ void do_homing(void)
 	    case HOME_SET_INDEX_POSITION:
 
 			if((H[joint_num].home_flags & HOME_DISTANCE_CODED) && (nr_ref_marks < 1)) {
+				/* Searches for the first reference mark and store its raw encoder position
+				in 'raw_trigger_1'. Then it resets the homing state to HOMEO_INDEX_SEARCH_START
+				to look for the the second homing mark */
 
-        		raw_trigger_1 = joint->motor_pos_raw_fb - joint->pos_fb;
+        		raw_trigger_1 = joint->motor_pos_raw_fb - round(joint->pos_fb * H[joint_num].encoder_scale);
         		++nr_ref_marks;
         		H[joint_num].home_state = HOME_INDEX_SEARCH_START; //sent it back to index mark search
 
     		}else if((H[joint_num].home_flags & HOME_DISTANCE_CODED)  && (nr_ref_marks < 2)){
 
-        		raw_trigger_2 = joint->motor_pos_raw_fb - joint->pos_fb;
+        		raw_trigger_2 = joint->motor_pos_raw_fb - round(joint->pos_fb * H[joint_num].encoder_scale);
         		++nr_ref_marks;
 
-        		// calculate and set the 'home_offset' based on raw_trigger_pos_1, raw_trigger_pos_2 and current_pos
-				int over_sampling = 20;
-				int index_pulse_width = 2;
-				int position;
-				position = distance_coded_position(raw_trigger_1, raw_trigger_2, H[joint_num].home_distance_coded_n, over_sampling, index_pulse_width);
+        		// calculate and set the 'home_offset' based on raw_trigger_pos_1, raw_trigger_pos_2 
+				// int over_sampling = 20;
+				// int index_pulse_width = 2;
+				
+				int position = distance_coded_position(
+									raw_trigger_1, 
+									raw_trigger_2, 
+									H[joint_num].home_distance_coded_n, 
+									H[joint_num].home_distance_coded_os,
+									H[joint_num].home_distance_coded_pw
+									);
 
+				H[joint_num].home_offset = (double)position / H[joint_num].encoder_scale;  
 			}else{
 				/* This state is called when the encoder has been reset at
 				the index pulse position.  It sets the current joint 
@@ -1160,6 +1194,7 @@ void do_homing(void)
 				/* next state */
 				H[joint_num].home_state = HOME_FINAL_MOVE_START;
 				immediate_state = 1;
+				nr_ref_marks = 0;
 				break;
 			}	
 

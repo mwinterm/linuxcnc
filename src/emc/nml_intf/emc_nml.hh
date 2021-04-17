@@ -312,7 +312,9 @@ class EMC_JOINT_SET_HOMING_PARAMS:public EMC_JOINT_CMD_MSG {
     int absolute_encoder;
     int distance_coded;
     int distance_coded_n;
-    double distance_coded_os;
+    int distance_coded_os;
+    int distnace_coded_pw;
+    double encoder_scale;
 };
 
 class EMC_JOINT_SET_MAX_VELOCITY:public EMC_JOINT_CMD_MSG {
