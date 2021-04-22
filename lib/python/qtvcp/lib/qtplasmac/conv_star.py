@@ -169,12 +169,13 @@ def auto_preview(P, W):
         preview(P, W)
 
 def entry_changed(P, W, widget):
-    if not W.liEntry.text() or float(W.liEntry.text()) == 0:
+    char = P.conv_entry_changed(widget)
+    if char == "operator" or not W.liEntry.text() or float(W.liEntry.text()) == 0 \
+                or float(W.liEntry.text()) <= float(W.kerf_width.value()) / 2:
         W.kOffset.setEnabled(False)
         W.kOffset.setChecked(False)
     else:
         W.kOffset.setEnabled(True)
-    P.conv_entry_changed(widget)
 
 def add_shape_to_file(P, W):
     P.conv_add_shape_to_file()
@@ -209,13 +210,13 @@ def widgets(P, W):
     W.loLabel = QLabel('LEAD OUT')
     W.loEntry = QLineEdit(objectName = 'loEntry')
     W.pLabel = QLabel('POINTS')
-    W.pEntry = QLineEdit()
+    W.pEntry = QLineEdit(objectName='intEntry')
     W.odLabel = QLabel('OUTER DIA')
     W.odEntry = QLineEdit()
     W.idLabel = QLabel('INNER DIA')
     W.idEntry = QLineEdit()
     W.aLabel = QLabel('ANGLE')
-    W.aEntry = QLineEdit()
+    W.aEntry = QLineEdit(objectName='aEntry')
     W.preview = QPushButton('PREVIEW')
     W.add = QPushButton('ADD')
     W.undo = QPushButton('UNDO')

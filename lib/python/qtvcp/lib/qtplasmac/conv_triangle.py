@@ -198,10 +198,11 @@ def preview(P, W):
                                      'A + B + C + (a or b or c)')
 
 def entry_changed(P, W, widget):
-    P.conv_entry_changed(widget)
-    if not W.liEntry.text() or float(W.liEntry.text()) == 0:
-        W.kOffset.setChecked(False)
+    char = P.conv_entry_changed(widget)
+    if char == "operator" or not W.liEntry.text() or float(W.liEntry.text()) == 0 \
+                or float(W.liEntry.text()) <= float(W.kerf_width.value()) / 2:
         W.kOffset.setEnabled(False)
+        W.kOffset.setChecked(False)
     else:
         W.kOffset.setEnabled(True)
 
@@ -254,7 +255,7 @@ def widgets(P, W):
     W.cLabel = QLabel('c LENGTH')
     W.cEntry = QLineEdit()
     W.angLabel = QLabel('ANGLE')
-    W.angEntry = QLineEdit()
+    W.angEntry = QLineEdit(objectName='aEntry')
     W.preview = QPushButton('PREVIEW')
     W.add = QPushButton('ADD')
     W.undo = QPushButton('UNDO')

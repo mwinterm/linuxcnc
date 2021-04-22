@@ -1,4 +1,4 @@
-VERSION = '1.0.18'
+VERSION = '1.0.25'
 
 import os, sys
 from shutil import copy as COPY
@@ -127,6 +127,11 @@ class HandlerClass:
         KEYBIND.add_call('Key_ParenLeft', 'on_keycall_NUMBER', 9)
         KEYBIND.add_call('Key_0', 'on_keycall_NUMBER', 0)
         KEYBIND.add_call('Key_ParenRight', 'on_keycall_NUMBER', 0)
+        # there are no default keys for joint/axis 4
+        KEYBIND.add_call('Key_Comma', 'on_keycall_BPOS')
+        KEYBIND.add_call('Key_Less', 'on_keycall_BPOS')
+        KEYBIND.add_call('Key_Period', 'on_keycall_BNEG')
+        KEYBIND.add_call('Key_Greater', 'on_keycall_BNEG')
         self.axisList = [x.lower() for x in INFO.AVAILABLE_AXES]
         self.systemList = ['G53','G54','G55','G56','G57','G58','G59','G59.1','G59.2','G59.3']
         self.slowJogFactor = 10
@@ -143,6 +148,11 @@ class HandlerClass:
         self.jogSyncList = []
         self.axisAList = ['dro_a', 'dro_label_a', 'home_a', 'touch_a', 'jog_a_plus', 'jog_a_minus']
         self.axisBList = ['dro_b', 'dro_label_b', 'home_b', 'touch_b', 'jog_b_plus', 'jog_b_minus']
+        nonRepeatKeys = ['113','114','111','116','112','117','34','35','59','60',]
+        self.nonRepeatKeys = []
+        for k in range(0, len(self.axisList) * 2, 2):
+            self.nonRepeatKeys.append(nonRepeatKeys[k])
+            self.nonRepeatKeys.append(nonRepeatKeys[k + 1])
         self.xMin = float(self.iniFile.find('AXIS_X', 'MIN_LIMIT'))
         self.xMax = float(self.iniFile.find('AXIS_X', 'MAX_LIMIT'))
         self.yMin = float(self.iniFile.find('AXIS_Y', 'MIN_LIMIT'))
@@ -271,16 +281,18 @@ class HandlerClass:
         STATUS.connect('interp-run', self.interp_running)
         STATUS.connect('jograte-changed', self.jog_rate_changed)
         STATUS.connect('graphics-gcode-properties', lambda w, d:self.update_gcode_properties(d))
-        self.overlay.setText(self.get_overlay_text())
+        self.overlay.setText(self.get_overlay_text(False))
+        self.overlayConv.setText(self.get_overlay_text(True))
         if not self.w.chk_overlay.isChecked():
             self.overlay.hide()
+            self.overlayConv.hide()
         self.w.setWindowTitle('{} - QtPlasmaC v{}, powered by QtVCP on LinuxCNC v{}'.format(self.machineName, VERSION, linuxcnc.version.split(':')[0]))
         self.startupTimer = QTimer()
         self.startupTimer.timeout.connect(self.startup_timeout)
         self.startupTimer.setSingleShot(True)
         self.set_color_styles()
         if not self.iniFile.find('QTPLASMAC', 'AUTOREPEAT_ALL') == 'ENABLE':
-            ACTION.DISABLE_AUTOREPEAT_KEYS()
+            ACTION.DISABLE_AUTOREPEAT_KEYS(self.nonRepeatKeys)
         self.startupTimer.start(250)
 
     def startup_timeout(self):
@@ -580,6 +592,7 @@ class HandlerClass:
         self.w.camview.cross_pointer_color = QtCore.Qt.red
         self.w.camview.font = QFont("arial,helvetica", 16)
         self.overlay = OverlayMaterial(self.w.gcodegraphics)
+        self.overlayConv = OverlayMaterial(self.w.conv_preview)
         self.flasher = QTimer()
         self.flasher.timeout.connect(self.flasher_timeout)
         self.flasher.start(250)
@@ -588,11 +601,13 @@ class HandlerClass:
         self.runButtonTimer.timeout.connect(self.run_button_timeout)
         self.manualCut = False
 
-    def get_overlay_text(self):
+    def get_overlay_text(self, kerf):
         text  = ('FR: {}\n'.format(self.w.cut_feed_rate.text()))
         text += ('PH: {}\n'.format(self.w.pierce_height.text()))
         text += ('PD: {}\n'.format(self.w.pierce_delay.text()))
         text += ('CH: {}'.format(self.w.cut_height.text()))
+        if kerf == True:
+            text += ('\nKW: {}'.format(self.w.kerf_width.text()))
         if self.pmx485Exists:
             text += ('\nCA: {}'.format(self.w.cut_amps.text()))
         return text
@@ -654,7 +669,7 @@ class HandlerClass:
         self.w.PREFS_.putpref('Kerf cross enable', self.w.kerfcross_enable.isChecked(), bool, 'ENABLE_OPTIONS')
         self.w.PREFS_.putpref('Use auto volts', self.w.use_auto_volts.isChecked(), bool, 'ENABLE_OPTIONS')
         self.w.PREFS_.putpref('Ohmic probe enable', self.w.ohmic_probe_enable.isChecked(), bool, 'ENABLE_OPTIONS')
-        ACTION.ENABLE_AUTOREPEAT_KEYS()
+        ACTION.ENABLE_AUTOREPEAT_KEYS(self.nonRepeatKeys)
 
     def processed_key_event__(self,receiver,event,is_pressed,key,code,shift,cntrl):
         # when typing in MDI, we don't want keybinding to call functions
@@ -1168,7 +1183,7 @@ class HandlerClass:
         if STATUS.is_joint_mode():
             self.kb_jog(state, self.coordinates.index(joint), direction, shift)
         else:
-            self.kb_jog(state, self.axisList.index(joint), direction, shift)
+            self.kb_jog(state, ["x","y","z","a","b"].index(joint), direction, shift)
 
     def view_p_pressed(self):
         self.w.gcodegraphics.set_view('P')
@@ -1257,6 +1272,8 @@ class HandlerClass:
         elif tab == 1:
             self.w.conv_preview.logger.clear()
             self.w.conv_preview.set_current_view()
+            self.conv_button_color('conv_line')
+            self.oldConvButton = False
             self.conv_setup()
 
     def z_height_changed(self, value):
@@ -1395,12 +1412,12 @@ class HandlerClass:
         else:
             units = 'mm'
         if 'X' in self.gcodeProps:
-            xMin = float(self.gcodeProps['X'].split('to')[0].strip()) - xOffset
+            xMin = float(self.gcodeProps['X'].split()[0]) - xOffset
             if xMin < self.xMin:
                 amount = float(self.xMin - xMin)
                 msg += 'X move would exceed X minimum limit by {:0.2f}{}\n'.format(amount, units)
                 self.boundsError[boundsType] = True
-            xMax = float(self.gcodeProps['X'].split('to')[1].split('=')[0].strip()) - xOffset
+            xMax = float(self.gcodeProps['X'].split()[2]) - xOffset
             if xMax > self.xMax:
                 amount = float(xMax - self.xMax)
                 msg += 'X move would exceed X maximum limit by {:0.2f}{}\n'.format(amount, units)
@@ -1409,12 +1426,12 @@ class HandlerClass:
             xMin = 0
             xMax = 0
         if 'Y' in self.gcodeProps:
-            yMin = float(self.gcodeProps['Y'].split('to')[0].strip()) - yOffset
+            yMin = float(self.gcodeProps['Y'].split()[0]) - yOffset
             if yMin < self.yMin:
                 amount = float(self.yMin - yMin)
                 msg += 'Y move would exceed Y minimum limit by {:0.2f}{}\n'.format(amount, units)
                 self.boundsError[boundsType] = True
-            yMax = float(self.gcodeProps['Y'].split('to')[1].split('=')[0].strip()) - yOffset
+            yMax = float(self.gcodeProps['Y'].split()[2]) - yOffset
             if yMax > self.yMax:
                 amount = float(yMax - self.yMax)
                 msg += 'Y move would exceed Y maximum limit by {:0.2f}{}\n'.format(amount, units)
@@ -1820,8 +1837,10 @@ class HandlerClass:
     def overlay_changed(self):
         if self.w.chk_overlay.isChecked():
             self.overlay.show()
+            self.overlayConv.show()
         else:
             self.overlay.hide()
+            self.overlayConv.hide()
 
     def dialog_show(self, icon, title, error):
         msg = QMessageBox(self.w)
@@ -2141,7 +2160,9 @@ class HandlerClass:
         self.probePressed = False
         self.probeTime = 0
         self.probeTimer = QTimer()
+        self.probeTimer.setSingleShot(True)
         self.probeTimer.timeout.connect(self.probe_timeout)
+        self.torchTime = 0.0
         self.torchTimer = QTimer()
         self.torchTimer.setSingleShot(True)
         self.torchTimer.timeout.connect(self.torch_timeout)
@@ -2197,28 +2218,25 @@ class HandlerClass:
                 self.frButton = 'button_{}'.format(str(bNum))
             else:
                 for command in bCode.split('\\'):
-
-                    # if command.strip()[0] == '%':
-                    #     self.w['button_{}'.format(str(bNum))].setEnabled(True)
-                    #     continue
-                    # elif command.strip()[0] != '%':
-
-                    if command.strip()[0].lower() in ['g', 'm', 'f', 's', 't', 'o'] and \
-                         command.strip().replace(' ','')[1] in '0123456789<' and \
-                         'button_{}'.format(str(bNum)) not in self.idleHomedList:
-                        self.idleHomedList.append('button_{}'.format(str(bNum)))
-                    elif command.strip()[0] == '%':
-                        cmd = command.lstrip('%').strip().split(' ', 1)[0]
+                    command = command.strip()
+                    if command and command[0].lower() in 'xyzabgmfsto' and command.replace(' ','')[1] in '0123456789<':
+                        if 'button_{}'.format(str(bNum)) not in self.idleHomedList:
+                            self.idleHomedList.append('button_{}'.format(str(bNum)))
+                    elif command and command[0] == '%':
+                        cmd = command.lstrip('%').lstrip(' ').split(' ', 1)[0]
                         reply = Popen("which {}".format(cmd),stdout=PIPE,stderr=PIPE, shell=True).communicate()[0]
                         if not reply:
                             msg  = 'Invalid code for user button #{}\n'.format(bNum)
                             msg += 'External command "{}" does not exist\n'.format(cmd)
-                            STATUS.emit('error', linuxcnc.OPERATOR_ERROR, 'HAL PIN ERROR:\n{}'.format(msg))
+                            STATUS.emit('error', linuxcnc.OPERATOR_ERROR, 'EXTERNAL CODE ERROR:\n{}'.format(msg))
                         self.idleList.append('button_{}'.format(str(bNum)))
                     else:
                         msg  = 'Invalid code for user button #{}\n'.format(bNum)
-                        msg += '{}: "{}"\n'.format(self.w['button_{}'.format(str(bNum))].text(), command)
+                        msg += '{}: "{}"\n'.format(self.w['button_{}'.format(str(bNum))].text().replace('\n',' '), command)
                         STATUS.emit('error', linuxcnc.OPERATOR_ERROR, 'CODE ERROR:\n{}'.format(msg))
+                        if 'button_{}'.format(str(bNum)) in self.idleHomedList:
+                            self.idleHomedList.remove('button_{}'.format(str(bNum)))
+                        break
 
     def user_button_down(self, bNum):
         commands = self.iniButtonCode[bNum]
@@ -2280,19 +2298,24 @@ class HandlerClass:
                 self.w[self.ptButton].setText(self.probeText)
                 self.button_normal(self.ptButton)
         elif 'torch-pulse' in commands.lower():
-            if self.w.torch_enable.isChecked() and not hal.get_value('plasmac.torch-on'):
+            if not self.torchTime and \
+               self.w.torch_enable.isChecked() and not hal.get_value('plasmac.torch-on'):
                 self.torchTime = 1.0
                 if commands.lower().replace('torch-pulse','').strip():
                     self.torchTime = float(commands.lower().replace('torch-pulse','').strip())
                     self.torchTime = 3.0 if self.torchTime > 3.0 else self.torchTime
-                self.tpText = self.w[self.tpButton].text()
-                self.w[self.tpButton].setText('{}'.format(self.torchTime))
                 self.torchTimer.start(100)
                 hal.set_p('plasmac.torch-pulse-time', str(self.torchTime))
                 hal.set_p('plasmac.torch-pulse-start', '1')
+                self.tpText = self.w[self.tpButton].text()
+                self.w[self.tpButton].setText('{}'.format(self.torchTime))
                 self.button_active(self.tpButton)
             else:
+                self.torchTimer.stop()
                 self.torchTime = 0.0
+                hal.set_p('plasmac.torch-pulse-time', '0')
+                self.w[self.tpButton].setText(self.tpText)
+                self.button_normal(self.tpButton)
         elif 'cut-type' in commands.lower():
             self.w.gcodegraphics.logger.clear()
             self.cutType ^= 1
@@ -2331,8 +2354,8 @@ class HandlerClass:
             self.do_framing(True, commands)
         else:
             for command in commands.split('\\'):
-                if command.strip()[0].lower() in ['g', 'm', 'f', 's', 't', 'o'] and \
-                     command.strip().replace(' ','')[1] in '0123456789<':
+                command = command.strip()
+                if command and command[0].lower() in 'xyzabgmfsto' and command.replace(' ','')[1] in '0123456789<':
                     if '{' in command:
                         newCommand = subCommand = ''
                         for char in command:
@@ -2347,23 +2370,15 @@ class HandlerClass:
                             else:
                                 newCommand += char
                         command = newCommand
-                    if STATUS.is_on_and_idle() and STATUS.is_all_homed():
-                        ACTION.CALL_MDI(command)
-                        if command.lower().replace(' ', '').startswith('g10l20'):
-                            self.file_reload_clicked()
-                elif command.strip()[0] == '%':
-                    cmd = command.lstrip('%').strip().split(' ', 1)[0]
-                    reply = Popen("which {}".format(cmd),stdout=PIPE,stderr=PIPE, shell=True).communicate()[0]
-                    if not reply:
-                        msg  = 'Invalid code for user button #{}\n'.format(bNum)
-                        msg += 'External command "{}" does not exist\n'.format(cmd)
-                        STATUS.emit('error', linuxcnc.OPERATOR_ERROR, 'HAL PIN ERROR:\n{}'.format(msg))
-                    else:
-                        command = command.strip().strip('%') + '&'
-                        msg = Popen(command,stdout=PIPE,stderr=PIPE, shell=True)
+                    ACTION.CALL_MDI(command)
+                    if command.lower().replace(' ', '').startswith('g10l20'):
+                        self.file_reload_clicked()
+                elif command and command[0] == '%':
+                    command = command.lstrip('%').lstrip() + '&'
+                    msg = Popen(command,stdout=PIPE,stderr=PIPE, shell=True)
                 else:
                     msg  = 'Invalid code for user button #{}\n'.format(bNum)
-                    msg += '{}: "{}"\n'.format(self.w['button_{}'.format(str(bNum))].text(), command)
+                    msg += '{}: "{}"\n'.format(self.w['button_{}'.format(str(bNum))].text().replace('\n',' '), command)
                     STATUS.emit('error', linuxcnc.OPERATOR_ERROR, 'CODE ERROR:\n{}'.format(msg))
 
     def user_button_up(self, bNum):
@@ -2401,14 +2416,16 @@ class HandlerClass:
             self.button_normal(self.ptButton)
 
     def torch_timeout(self):
-        self.torchTime -= 0.1
-        if self.torchTime <= 0.00:
-            self.w[self.tpButton].setText(self.tpText)
-            hal.set_p('plasmac.torch-pulse-time', '0')
-            self.button_normal(self.tpButton)
-        else:
+        if self.torchTime > 0.1:
+            self.torchTime -= 0.1
             self.torchTimer.start(100)
             self.w[self.tpButton].setText('{:.1f}'.format(self.torchTime))
+        else:
+            self.torchTimer.stop()
+            self.torchTime = 0
+            hal.set_p('plasmac.torch-pulse-time', '0')
+            self.w[self.tpButton].setText(self.tpText)
+            self.button_normal(self.tpButton)
 
     def consumable_change_setup(self):
         self.ccXpos = self.ccYpos = self.ccFeed = 'None'
@@ -2722,7 +2739,8 @@ class HandlerClass:
             self.w.material_selector.setCurrentIndex(self.w.materials_box.currentIndex())
             self.w.conv_material.setCurrentIndex(self.w.materials_box.currentIndex())
         self.autoChange = False
-        self.overlay.setText(self.get_overlay_text())
+        self.overlay.setText(self.get_overlay_text(False))
+        self.overlayConv.setText(self.get_overlay_text(True))
 
     def material_change_pin_changed(self, halpin):
         if halpin == 0:
@@ -2816,7 +2834,7 @@ class HandlerClass:
         self.w.conv_material.clear()
         for key in sorted(self.materialFileDict):
             self.w.materials_box.addItem('{:05d}: {}'.format(key, self.materialFileDict[key][0]))
-            self.w.material_selector.addItem('Material = {:05d}: {}'.format(key, self.materialFileDict[key][0]))
+            self.w.material_selector.addItem('MATERIAL = {:05d}: {}'.format(key, self.materialFileDict[key][0]))
             self.w.conv_material.addItem('{:05d}: {}'.format(key, self.materialFileDict[key][0]))
             self.materialList.append(key)
 
@@ -3072,7 +3090,7 @@ class HandlerClass:
 
     def load_default_material(self):
         self.write_materials( \
-                0, 'Default' , \
+                0, 'DEFAULT' , \
                 self.w.PREFS_.getpref('Kerf width', round(1 * self.unitsPerMm, 2), float, 'DEFAULT MATERIAL'), \
                 self.w.PREFS_.getpref('Pierce height', round(3 * self.unitsPerMm, 2), float, 'DEFAULT MATERIAL'), \
                 self.w.PREFS_.getpref('Pierce delay', 0, float, 'DEFAULT MATERIAL'), \
@@ -3850,7 +3868,7 @@ class HandlerClass:
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         fileName, _ = QFileDialog.getSaveFileName(self.w,
-                                                  'QFileDialog.getSaveFileName()',
+                                                  'Save',
                                                   self.programPrefix,
                                                   'G-Code Files (*.ngc *.nc *.tap);;All Files (*)',
                                                   options=options)
@@ -3872,8 +3890,8 @@ class HandlerClass:
         CONVSET.show(self, self.w)
 
     def conv_send_pressed(self):
-        COPY(self.fNgcBkp, self.fNgc)
-        ACTION.OPEN_PROGRAM(self.fNgc)
+        COPY(self.fNgcBkp, self.fNgc.replace("shape","sent_shape"))
+        ACTION.OPEN_PROGRAM(self.fNgc.replace("shape","sent_shape"))
         self.w.main_tab_widget.setCurrentIndex(0)
         self.w.conv_send.setEnabled(False)
 
@@ -3940,17 +3958,19 @@ class HandlerClass:
     def conv_entry_changed(self, widget):
         name = widget.objectName()
         if widget.text():
-            if name == 'hsEntry':
+            if name in ['intEntry', 'hsEntry']:
                 good = '0123456789'
-            else:
+            elif name in ['xsEntry', 'ysEntry', 'aEntry']:
                 good = '-.0123456789'
+            else:
+                good = '.0123456789'
             out = ''
             for t in widget.text():
-                if t in good:
+                if t in good and not(t == '-' and len(out) > 0) and not(t == '.' and t in out):
                     out += t
             widget.setText(out)
-            if widget.text() in '.-':
-                return
+            if widget.text() in '-.' or widget.text() == '-.':
+                return "operator"
             try:
                 a = float(widget.text())
             except:
@@ -4219,43 +4239,73 @@ class HandlerClass:
 
     def on_keycall_XPOS(self, event, state, shift, cntrl):
         if not self.w.main_tab_widget.currentIndex() and self.keyboard_shortcuts():
-            self.kb_jog(state, 0, 1, shift)
+            if STATUS.is_joint_mode():
+                self.kb_jog(state, self.coordinates.index("x"), 1, shift)
+            else:
+                self.kb_jog(state, 0, 1, shift)
 
     def on_keycall_XNEG(self, event, state, shift, cntrl):
         if not self.w.main_tab_widget.currentIndex() and self.keyboard_shortcuts():
-            self.kb_jog(state, 0, -1, shift)
+            if STATUS.is_joint_mode():
+                self.kb_jog(state, self.coordinates.index("x"), -1, shift)
+            else:
+                self.kb_jog(state, 0, -1, shift)
 
     def on_keycall_YPOS(self, event, state, shift, cntrl):
         if not self.w.main_tab_widget.currentIndex() and self.keyboard_shortcuts():
-            self.kb_jog(state, 1, 1, shift)
+            if STATUS.is_joint_mode():
+                self.kb_jog(state, self.coordinates.index("y"), 1, shift)
+            else:
+                self.kb_jog(state, 1, 1, shift)
 
     def on_keycall_YNEG(self, event, state, shift, cntrl):
         if not self.w.main_tab_widget.currentIndex() and self.keyboard_shortcuts():
-            self.kb_jog(state, 1, -1, shift)
+            if STATUS.is_joint_mode():
+                self.kb_jog(state, self.coordinates.index("y"), -1, shift)
+            else:
+                self.kb_jog(state, 1, -1, shift)
 
     def on_keycall_ZPOS(self, event, state, shift, cntrl):
         if not self.w.main_tab_widget.currentIndex() and self.keyboard_shortcuts():
-            self.kb_jog(state, 2, 1, shift)
+            if STATUS.is_joint_mode():
+                self.kb_jog(state, self.coordinates.index("z"), 1, shift)
+            else:
+                self.kb_jog(state, 2, 1, shift)
 
     def on_keycall_ZNEG(self, event, state, shift, cntrl):
         if not self.w.main_tab_widget.currentIndex() and self.keyboard_shortcuts():
-            self.kb_jog(state, 2, -1, shift)
+            if STATUS.is_joint_mode():
+                self.kb_jog(state, self.coordinates.index("z"), -1, shift)
+            else:
+                self.kb_jog(state, 2, -1, shift)
 
     def on_keycall_APOS(self, event, state, shift, cntrl):
         if not self.w.main_tab_widget.currentIndex() and self.keyboard_shortcuts():
-            self.kb_jog(state, 3, 1, shift)
+            if STATUS.is_joint_mode():
+                self.kb_jog(state, self.coordinates.index("a"), 1, shift)
+            else:
+                self.kb_jog(state, 3, 1, shift)
 
     def on_keycall_ANEG(self, event, state, shift, cntrl):
         if not self.w.main_tab_widget.currentIndex() and self.keyboard_shortcuts():
-            self.kb_jog(state, 3, -1, shift)
+            if STATUS.is_joint_mode():
+                self.kb_jog(state, self.coordinates.index("a"), -1, shift)
+            else:
+                self.kb_jog(state, 3, -1, shift)
 
     def on_keycall_BPOS(self, event, state, shift, cntrl):
         if not self.w.main_tab_widget.currentIndex() and self.keyboard_shortcuts():
-            self.kb_jog(state, 4, 1, shift)
+            if STATUS.is_joint_mode():
+                self.kb_jog(state, self.coordinates.index("b"), 1, shift)
+            else:
+                self.kb_jog(state, 4, 1, shift)
 
     def on_keycall_BNEG(self, event, state, shift, cntrl):
         if not self.w.main_tab_widget.currentIndex() and self.keyboard_shortcuts():
-            self.kb_jog(state, 4, -1, shift)
+            if STATUS.is_joint_mode():
+                self.kb_jog(state, self.coordinates.index("b"), -1, shift)
+            else:
+                self.kb_jog(state, 4, -1, shift)
 
     def on_keycall_PLUS(self, event, state, shift, cntrl):
         if self.jogSlow:

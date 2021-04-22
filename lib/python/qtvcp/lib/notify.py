@@ -148,7 +148,18 @@ class Notify:
         n.setTimeout(timeout * 1000)
         n.addAction("Ok", "ok", self.okClicked, callback)
         n.onClose(self.handle_closed)
-        n.addAction('Canel', 'canel', self.cancelClicked, callback)
+        n.addAction('Canel', 'cancel', self.cancelClicked, callback)
+        n.show()
+        self.notify_list.append(n)
+
+    def show_toolchange_notification(self, title, message, icon, timeout, callback, jogpause=False):
+        n = sys_notify.Notification(title, message, icon)
+        n.setUrgency(sys_notify.Urgency.CRITICAL)
+        n.setTimeout(0)
+        n.addAction("action_click", "Ok", self.okClicked, callback)
+        n.onClose(lambda w:self.okClicked(w, None, callback))
+        if jogpause:
+            n.addAction('close_clicked', 'jogPause', self.jogPauseClicked)
         n.show()
         self.notify_list.append(n)
 
@@ -164,13 +175,14 @@ class Notify:
     def okClicked(self, n, action, callback):
         callback(True)
 
-    def cancelClicked(self, n, action, callack):
+    def cancelClicked(self, n, action, callback):
         callback(False)
+
+    def jogPauseClicked(self, n, action, callback):
+        callback(-1)
 
     def handle_closed(self, n):
         pass
-        # print self._n
-        # print n
 
     def closeClicked(self, n, text):
         n.close()

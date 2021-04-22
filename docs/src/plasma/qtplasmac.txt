@@ -11,7 +11,15 @@ QtPlasmaC and all of its related software are released under GPLv2.
 
 == Introduction
 
-QtPlasmaC is a GUI for plasma cutting which utilises the link:http://linuxcnc.org/docs/devel/html/man/man9/plasmac.9.html[plasmac component] for controlling a plasma table from LinuxCNC v2.9 or later using the Debian Buster or similar distribution. QtPlasmaC uses the QtVCP infrastructure provided with LinuxCNC and is based on a theme by user "pinder" on the LinuxCNC Forum. There are three available formats:
+QtPlasmaC is a GUI for plasma cutting which utilises the link:http://linuxcnc.org/docs/devel/html/man/man9/plasmac.9.html[plasmac component] for controlling a plasma table from LinuxCNC v2.9 or later using the Debian Buster or similar distribution.
+
+The QtPlasmaC GUI supports up to five axes and uses the QtVCP infrastructure provided with LinuxCNC.
+
+The standard theme is based on a design by user "pinder" on the LinuxCNC Forum and the colors are able to be changed by the user.
+
+The QtPlasmaC GUI will run on any hardware that is supported by LinuxCNC provided there are enough hardware I/O pins to fulfill the requirements of a plasma configuration.
+
+There are three available formats:
 
 [[qt_formats]]
 
@@ -23,19 +31,15 @@ Screenshot examples of QtPlasmaC are below:
 
 *16:9*
 
-image::images/qtplasmac_16x9.png[width=900,align="center"]
+image::images/qtplasmac_16x9.png[width=800,align="center"]
 
 *9:16*
 
-image::images/qtplasmac_9x16.png[width=550,align="center"]
+image::images/qtplasmac_9x16.png[width=450,align="center"]
 
 *4:3*
 
-image::images/qtplasmac_4x3.png[width=700,align="center"]
-
-The QtPlasmaC GUI will run on any hardware that is supported by LinuxCNC provided there are enough hardware I/O pins to fulfill the requirements of a plasma configuration.
-
-If the user is new to CNC plasma cutting, it is recommended that they read the link:plasma-cnc-primer.html[Plasma CNC Primer] document which is a generic introduction to CNC plasma cutting.
+image::images/qtplasmac_4x3.png[width=600,align="center"]
 
 NOTE: Except where noted, this guide assumes the user is using the latest version of QtPlasmaC. Update notices are posted at: https://forum.linuxcnc.org/plasmac/37233-plasmac-updates which will show the latest available version. The installed QtPlasmaC version is displayed in the title bar. See <<qt_update, Update QtPlasmaC>> for information on updating QtPlasmaC.
 
@@ -477,7 +481,7 @@ If debounce is required for other equipment like home or limit switches etc then
 
 === Desktop Launcher
 
-If a link to the launch the configuration was not created when creating the config, the user could create a desktop launcher to the config by right clicking on the desktop and selecting Create Launcher or similar. This will bring up a dialog to create a launcher. Give the icon a nice short name, enter anything for the command and click OK.
+If a link to the launch the configuration was not created when creating the config, the user could create a desktop launcher to the config by right clicking on the desktop and selecting Create Launcher or similar. This will bring up a dialog box to create a launcher. Give the icon a nice short name, enter anything for the command and click OK.
 
 After the launcher appears on the desktop, right click on it and then edit it with the user's editor of choice. Edit the file so it looks similar to:
 
@@ -523,8 +527,8 @@ After running a new configuration for the first time the following files will be
 |===
 |*Filename*|*Function*
 |<machine_name>_material.cfg|A file for storing the material settings from the MATERIAL section of the <<qt_parameters-tab, PARAMETERS Tab>>.
-|qtplasmac.prefs|A file containing the users preferences and parameters
-|qtplasmac.qss|This file is used to store the current color configuration
+|qtplasmac.prefs|A file containing the users preferences and parameters. It also stores the current color configuration.
+|qtplasmac.qss|This file is used to store the stylesheet for the currently loaded loaded session of QtPlasmaC.
 |===
 
 NOTE: The configuration files (<machine_name>.ini and <machine_name>.hal) that are created by configuration wizard are notated to explain the requirements to aid in manual manipulation of these configurations. They may be edited with any text editor.
@@ -656,7 +660,7 @@ The following sections will give a general overview of the QtPlasmaC layout.
 
 Screenshot example of the QtPlasmaC MAIN tab in *16:9* aspect ratio:
 
-image::images/qtplasmac_16x9.png[width=900,align="center"]
+image::images/qtplasmac_16x9.png[width=800,align="center"]
 
 Some functions/features are only used for particular modes and are not displayed if they are not required by the chosen QtPlasmaC mode.
 
@@ -674,10 +678,10 @@ Some functions/features are only used for particular modes and are not displayed
 |CA:|If "View Material" is selected on the PARAMETERS tab, and RS485 communications are enabled, this displays the currently selected material's Cut Amperage.
 |P|This button changes the preview to an isometric view.
 |Z|This button changes the preview to a top down view.
-|Right Arrow|This button the preview right.
-|Left Arrow|This button the preview left.
-|Up Arrow|This button the preview up.
-|Down Arrow|This button the preview down.
+|Right Arrow|This button pans the preview right.
+|Left Arrow|This button pans the preview left.
+|Up Arrow|This button pans the preview up.
+|Down Arrow|This button pans the preview down.
 |+|This button zooms the preview.
 |-|This button zooms the preview.
 |C|This button clears the live plot.
@@ -872,7 +876,7 @@ This value displayed below MOVE represents the Kerf Width of the currently selec
 
 Screenshot example of the QtPlasmaC CONVERSATIONAL tab in *16:9* aspect ratio:
 
-image::images/qtplasmac_conversational.png[width=900,align="center"]
+image::images/qtplasmac_conversational.png[width=800,align="center"]
 
 The Conversational tab enables the user to quickly program various simple shapes for quick cutting without the need for CAM software.
 
@@ -890,7 +894,7 @@ setp qtplasmac.conv_disable 1
 
 Screenshot example of the QtPlasmaC PARAMETERS tab in *16:9* aspect ratio:
 
-image::images/qtplasmac_parameters.png[width=900,align="center"]
+image::images/qtplasmac_parameters.png[width=800,align="center"]
 
 Some functions/features are only used for particular modes and are not displayed if they are not required by the chosen QtPlasmaC mode.
 
@@ -1050,6 +1054,8 @@ The **DELETE** this button is used to delete a material. After pressing it, the 
 
 This section shows parameters that effect the GUI appearance and GUI behaviors.
 
+To return any of the color changes to their default values, see the <<qt_default_styling, Returning To The Default Styling>> section.
+
 [width="100%",cols="4,16"]
 |===
 |*Name*|*Description*
@@ -1065,7 +1071,7 @@ This section shows parameters that effect the GUI appearance and GUI behaviors.
 |Soft Keyboard|This radio button allows the user to enable or disable the soft touchscreen keyboard.
 |KB Shortcuts|This radio button allows the user to enable or disable <<qt_keyboard-shortcuts, Keyboard Shortcuts>> within the GUI (such as keyboard jogging). +
                 In addition to the standard jog keys, a list of the additional shortcuts is available in the <<qt_keyboard-shortcuts, keyboard shortcuts>> section.
-|View Material|This radio button allows the user to enable or disable a visual reference of key material cut settings to the <<qt_main-tab, MAIN Tab>> Preview Window. +
+|View Material|This radio button allows the user to enable or disable the addition of a visual reference showing key material cut settings to the Preview Windows of the <<qt_main-tab, MAIN>> and <<qt_conversational-tab, CONVERSATIONAL>> tabs. +
                 Examples are:  Feed Rate, Pierce Height, Pierce Delay, and Cut Height. Cut Amps will be shown if PowerMax communications are enabled.
 |Optional Stop|This radio button allows the user to enable or disable whether or not a running program will pause at an *M1* command.
 |Run From Line|This radio button allows the user to enable or disable <<qt_run-from-line, Run From Line>>. If enabled, the user can click on a line of G-Code and have the program start from that line.
@@ -1093,7 +1099,7 @@ Previous job statistics are reset once the next program is run.
 
 The total values may be reset either individually by clicking the corresponding "RESET" button, or they may all be reset together by clicking "RESET ALL".
 
-image::images/qtplasmac_stats.png[width=900,align="center"]
+image::images/qtplasmac_stats.png[width=800,align="center"]
 
 If the user has Hypertherm PowerMax communications, when a valid RS485 connection to the PowerMax is established an additional panel titled *RS485 PMX STATISTICS* will be displayed which will show the *ARC ON TIME* for the PowerMax in hh:mm:ss format.
 
@@ -1135,7 +1141,7 @@ If the user intends to place the material randomly on the table then the user mu
 
 === CAMERA
 
-image::images/qtplasmac_camview.png[width=900,align="center"]
+image::images/qtplasmac_camview.png[width=800,align="center"]
 
 QtPlasmaC has the ability to use a USB camera to set the origin with or without rotation compensation. The CAMERA button will be enabled after the machine is homed.
 
@@ -1330,7 +1336,7 @@ NOTE: All references to CutFeedRate refer to the *Cut Feed Rate* value displayed
 
 === Material File
 
-Material handling uses a material file that was created for the machine configuration when the configuration wizard was ran and allows the user to conveniently store known material settings for easy recall either manually or automatically via G Code. The resulting <<qt_material-file, material file>> is named *<machine_name>_material.cfg*.
+Material handling uses a material file that was created for the machine configuration when the configuration wizard was ran and allows the user to conveniently store known material settings for easy recall either manually or automatically via G-Code. The resulting <<qt_material-file, material file>> is named *<machine_name>_material.cfg*.
 
 QtPlasmaC does not require the use of a material file. Instead, the user could change the cut parameters manually from the MATERIAL section of the <<qt_parameters-tab, PARAMETERS Tab>>. It is also not required to use the automatic material changes. If the user does not wish to use this feature they can simply omit the material change codes from the G-Code file.
 
@@ -1453,7 +1459,7 @@ source ~/linuxcnc-dev/scripts/rip-environment
 qtplasmac-materials
 ----
 
-This will bring up the Material Converter Main dialog with Manual selected as the default.
+This will bring up the Material Converter Main dialog box with Manual selected as the default.
 
 Select one of:
 
@@ -1477,7 +1483,7 @@ To convert:
 . Select the Output File to write to, press *OUTPUT* to bring up a file selector or directly enter the file in the entry box. This would normally be ~/linuxcnc/configs/<machine_name>_material.cfg. If necessary, the user could select a different file and hand edit the <machine_name>_material.cfg file.
 . Click *CREATE/CONVERT* and the new material file will be created.
 
-For both a Manual creation or a Fusion 360 conversion, a dialog will show with all available parameters displayed for input. Any entry marked with pass:[***] is mandatory and all other entries are optional depending on the user's configuration needs.
+For both a Manual creation or a Fusion 360 conversion, a dialog box will show with all available parameters displayed for input. Any entry marked with pass:[***] is mandatory and all other entries are optional depending on the user's configuration needs.
 
 image::images/qtplasmac_material_manual_dialog.png[width=150,align="center"]
 
@@ -1847,7 +1853,7 @@ This is the preferred method. The parameters for this method are entered in the 
 image::images/qtplasmac_single_cut.png[width=300,align="center"]
 
 . Jog to the required X/Y start position. +
-. Set required appropriate material, or edit the Feed Rate for the default material in the PARAMATERS tab. +
+. Set required appropriate material, or edit the Feed Rate for the default material in the PARAMETERS tab. +
 . Press the assigned single cut user button. +
 . Enter the length of the cut along the X and/or Y axes. +
 . Press the *CUT* button and the cut will commence.
@@ -1923,26 +1929,26 @@ Both *Mesh Mode* and *Ignore Arc OK* can be enabled/disabled at any time during 
 
 image::images/qtplasmac_cut_recovery.png[width=250,align="center"]
 
-This feature will produce a dialog box that will allow the torch to be moved away from the cut path during a <<qt_paused-motion, paused motion>> event in order to position the torch over a scrap portion of the material being cut so that the cut restarts with a minimized arc-divot. This feature will display automatically over top of the JOGGING panel when motion is paused.
+This feature will produce a CUT RECOVERY panel that will allow the torch to be moved away from the cut path during a <<qt_paused-motion, paused motion>> event in order to position the torch over a scrap portion of the material being cut so that the cut restarts with a minimized arc-divot. The CUT RECOVERY panel will display automatically over top of the JOGGING panel when motion is paused.
 
-It is preferable to make torch position adjustments from the point at which paused motion occurred, however if moving along the cut path is necessary prior to setting the new start point, the user may use the paused motion controls (*REV*, *FWD*, and a *JOG-SPEED* slider) at the top of the dialog box. Once the user is satisfied with the positioning of the torch along the cut path, moving off the cut path is achieved by pressing the *DIRECTION* buttons. Each press of the *DIRECTION* button will move the torch a distance equivalent to the *Kerf Width* parameter of the currently selected material.
+It is preferable to make torch position adjustments from the point at which paused motion occurred, however if moving along the cut path is necessary prior to setting the new start point, the user may use the paused motion controls (*REV*, *FWD*, and a *JOG-SPEED* slider) at the top of the CUT RECOVERY panel. Once the user is satisfied with the positioning of the torch along the cut path, moving off the cut path is achieved by pressing the *DIRECTION* buttons. Each press of the *DIRECTION* button will move the torch a distance equivalent to the *Kerf Width* parameter of the currently selected material.
 
-The moment the torch has been moved off the cut path, the paused motion controls (*REV*, *FWD*, and a *JOG-SPEED* slider) at the top of the dialog box will become disabled.
+The moment the torch has been moved off the cut path, the paused motion controls (*REV*, *FWD*, and a *JOG-SPEED* slider) at the top of the CUT RECOVERY panel will become disabled.
 
 Once the torch position is satisfactory, press *CYCLE RESUME* and the cut will resume from the new position and travel the shortest distance to the original paused motion location. The CUT RECOVERY panel will close and the JOGGING panel will display when the torch returns to the original paused motion location.
 
-Pressing *CANCEL* (or *CYCLE STOP*) will cause the torch to move back to where it was positioned when the motion became paused and the dialog box will close.
+Pressing *CANCEL* (or *CYCLE STOP*) will cause the torch to move back to where it was positioned when the motion became paused and the CUT RECOVERY panel overlay will return to the JOGGING panel.
 
 [[qt_run-from-line]]
 
 === Run From Line
 
-If the user has the Run From Line option enabled in the GUI SETTINGS section of the <<qt_parameters-tab, PARAMETERS Tab>> they will have the ability to start from any line in a G Code program via the following methods:
+If the user has the Run From Line option enabled in the GUI SETTINGS section of the <<qt_parameters-tab, PARAMETERS Tab>> they will have the ability to start from any line in a G-Code program via the following methods:
 
 . Clicking any line in the Preview Window
 . Clicking any line in the G-Code Window
 
-It is important to note that G Code programs can be run from any selected line using this method, however a leadin may not be possible depending on the line selected. In this case, an error message will be displayed to let the user know the leadin calculation was not possible.
+It is important to note that G-Code programs can be run from any selected line using this method, however a leadin may not be possible depending on the line selected. In this case, an error message will be displayed to let the user know the leadin calculation was not possible.
 
 Once the user has selected the starting place, the *CYCLE START* button will blink *"SELECTED nn"* where nn is the corresponding line number selected. Clicking this button will bring up the following Run From Line dialog box:
 
@@ -1970,8 +1976,8 @@ After pressing *LOAD*, the blinking "SELECTED nn" button will change to a blinki
 
 *Run From Line selections may be canceled in the following ways:*
 
-. Click the background of the preview window - this method will cancel a selection of either a cut line in the preview window, or a G Code line in the G Code window.
-. Clicking *RELOAD* in the G Code window header - this method will cancel the Run From Line process if LOAD was clicked on the Run From Line dialog box and "rfl.ngc" is displayed as the loaded file name in the G Code window header. This will return the user to the originally loaded file.
+. Click the background of the preview window - this method will cancel a selection of either a cut line in the preview window, or a G-Code line in the G-Code window.
+. Clicking *RELOAD* in the G-Code window header - this method will cancel the Run From Line process if LOAD was clicked on the Run From Line dialog box and "rfl.ngc" is displayed as the loaded file name in the G-Code window header. This will return the user to the originally loaded file.
 
 [[qt_scribe]]
 
@@ -2076,7 +2082,7 @@ IT IS RECOMMENDED THAT THE USER CARRY OUT SOME TEST SPOTTING TO ENSURE THAT THE 
 
 === Keyboard Shortcuts
 
-Below is a list of all available keyboard shortcuts in QtPlasmaC that are in addition to the standard jogging keys. In order for the user to utilize them, *KB Shortcuts* must be enabled in the *GUI SETTINGS* section of the *PARAMETERS Tab*.
+Below is a list of all available keyboard shortcuts in QtPlasmaC. In order for the user to utilize them, *KB Shortcuts* must be enabled in the *GUI SETTINGS* section of the *PARAMETERS Tab*.
 
 [width="100%",cols="4,16"]
 |===
@@ -2084,6 +2090,7 @@ Below is a list of all available keyboard shortcuts in QtPlasmaC that are in add
 |ESC|Stops current automated motion (For example: a running program).
 |F1|Toggles the E-STOP button (if the GUI E-STOP button is enabled).
 |F2|Toggles the GUI power button.
+|F9|Toggles the "Cutting" command, used to begin or end a manual cut.
 |1|Changes jog speed to 10% of the value present in the DEFAULT_LINEAR_VELOCITY variable in the [DISPLAY] section of the <machine_name>.ini file.
 |2|Changes jog speed to 20% of the value present in the DEFAULT_LINEAR_VELOCITY variable in the [DISPLAY] section of the <machine_name>.ini file.
 |3|Changes jog speed to 30% of the value present in the DEFAULT_LINEAR_VELOCITY variable in the [DISPLAY] section of the <machine_name>.ini file.
@@ -2119,16 +2126,27 @@ Below is a list of all available keyboard shortcuts in QtPlasmaC that are in add
 |SPACE BAR|Pause motion.
 |o|Open a new program.
 |l|Load the previously opened program if no program is loaded. Reload the current program if there is a program loaded.
+|right arrow|jog the X axis positive.
+|left arrow|jog the X axis negative.
+|up arrow|jog the Y axis positive.
+|down arrow|jog the Y axis negative.
+|page up|jog the Z axis positive.
+|page down|jog the Z axis negative.
+|[|jog the A axis positive.
+|]|jog the A axis negative.
+|.|jog the B axis positive.
+|,|jog the B axis negative.
+|shift|used in conjunction with any jog key to invoke a rapid jog.
 |+|The plus key can be used with any jog key to invoke a rapid jog (behaves the same as SHIFT).
 |-|The minus key can be used with any jog key to invoke a slow jog (10% of the displayed jog speed) +
-    If SLOW jogging is already active, the axis will jog at the displayed jog speed.
+   If SLOW jogging is already active, the axis will jog at the displayed jog speed.
 |===
 
 [[qt_shape-library]]
 
 == Conversational Shape Library
 
-image::images/qtplasmac_conversational.png[width=900,align="center"]
+image::images/qtplasmac_conversational.png[width=800,align="center"]
 
 The *Conversational Shape Library* consists of several basic shapes and functions to assist the user with generating quick G-Code at the machine to cut simple shapes quickly. This feature is found on the <<qt_conversational-tab, CONVERSATIONAL Tab>>.
 
@@ -2141,17 +2159,20 @@ All lead-ins and lead-outs are arcs except for:
 * Small holes
 * Stars
 
-The cut order will occur in the same order as the shape was built.
+*The cut order will occur in the same order as the shape was built.*
 
 Pressing *Return* on the keyboard while editing parameters will automatically show the preview of the shape if there are enough parameters entered to create the shape. Clicking any of the available check boxes will do the same.
 
-The button functions are as follows:
+The general functions are as follows:
 
 [width="100%",cols="4,16"]
 |===
 |*Name*|*Description*
+|Material Drop Down|Allows the user to select the desired material for cutting. +
+                    If "VIEW MATERIAL" is selected on the <<qt_parameters-tab, PARAMETERS Tab>>, a visual reference showing key material cut settings will be displayed on the Conversational Preview Window. +
+                    Examples are:  Feed Rate, Pierce Height, Pierce Delay, Cut Height, and Kerf Width (for Conversational only). Cut Amps will be shown if PowerMax communications are enabled.
 |NEW|Removes the current G-Code file and load a blank G-Code file.
-|SAVE|Opens a dialog allowing the current shape to be saved as a G-Code file.
+|SAVE|Opens a dialog box allowing the current shape to be saved as a G-Code file.
 |SETTINGS|Allows the changing of the global settings.
 |SEND|Loads the current shape into LinuxCNC (QtPlasmaC). If the last edit was not added then it will be discarded.
 |PREVIEW|Displays a preview of the current shape provided the required information is present.
@@ -2161,6 +2182,8 @@ The button functions are as follows:
 |===
 
 If there is a G-Code file loaded in LinuxCNC (QtPlasmaC) when the CONVERSATIONAL Tab is selected, that code will be imported into the conversational as the first shape of the job. If this code is not required then it can be removed by pressing the *NEW* button.
+
+IMPORTANT: Any unsaved or unsent work will be discarded if the user leaves the CONVERSATIONAL Tab.
 
 NOTE: All distances are in machine units relative to the current User Coordinate System and all angles are in degrees.
 
@@ -2270,8 +2293,8 @@ Arrays created via Conversational may be rotated, however arrays that have been 
 Rotation will not work on G-Code that is mathematically calculated, the values need to be specified.
 
 . Create a shape, a group, or use the imported G-Code file.
-. Click the *Rotate* icon to open the rotate dialog.
-. Enter the appropriate values in the rotate dialog and press *PREVIEW* to display the rotated code.
+. Click the *Rotate* icon to open the rotate dialog box.
+. Enter the appropriate values in the rotate dialog box and press *PREVIEW* to display the rotated code.
 . If the rotation is not correct, edit the values and press *PREVIEW* and the new rotated code will be shown. Repeat until satisfied with the rotated code.
 . Press *ADD* to complete the procedure.
 . Press *SEND* to send the G-Code file to LinuxCNC (QtPlasmaC) for cutting.
@@ -2287,15 +2310,15 @@ Arrays created with Conversational may be arrayed but imported arrays cannot be 
 The cut order of an array is from the left column to the right column, starting at the bottom row and ending at the top row.
 
 . Create a shape, a group, or use the imported G-Code file.
-. Click the *Array* icon to open the array dialog.
-. Enter the appropriate values in the array dialog and press *PREVIEW* to display the array.
+. Click the *Array* icon to open the array dialog box.
+. Enter the appropriate values in the array dialog box and press *PREVIEW* to display the array.
 . If the array is not correct, edit the values and press *PREVIEW* and the new array will be shown. Repeat until satisfied with the array.
 . Press *ADD* to complete the procedure.
 . Press *SEND* to send the G-Code file to LinuxCNC (QtPlasmaC) for cutting.
 
 === Conversational Saving A Job
 
-The current job displayed in the Preview Panel may be saved at any time by using the bottom *SAVE* button. If the G-Code has been sent to LinuxCNC (QtPlasmaC) and the Conversational dialog box has closed, the user may still save the G-Code file from the GUI. Alternatively, the user could click the CONVERSATIONAL Tab which will reload the job, at which time they can press the *SAVE* button.
+The current job displayed in the Preview Panel may be saved at any time by using the bottom *SAVE* button. If the G-Code has been sent to LinuxCNC (QtPlasmaC) and the user has left the CONVERSATIONAL Tab, the user may still save the G-Code file from the GUI. Alternatively, the user could click the CONVERSATIONAL Tab which will reload the job, at which time they can press the *SAVE* button.
 
 == Error Messages
 
@@ -2439,9 +2462,9 @@ There are two methods available to apply custom styles:
 
 === Add A Custom Style
 
-Adding style changes to the default stylesheet is achieved by creating a file in the machine config folder. This file MUST be named qtplasmac_custom.qss. Any required style changes are then added to this file.
+Adding style changes to the default stylesheet is achieved by creating a file in the <machine_name> configuration folder. This file MUST be named qtplasmac_custom.qss. Any required style changes are then added to this file.
 
-For example the user may want the arc voltge dispay in red, a green Torch On LED of a larger size and a larger Torch Enable button. This would be done with the following code in qtplasmac_custom.qss:
+For example the user may want the arc voltage display in red, a green Torch On LED of a larger size and a larger Torch Enable button. This would be done with the following code in qtplasmac_custom.qss:
 
 ----
 #arc_voltage {
@@ -2504,16 +2527,45 @@ The above colors are used for the following widgets. So any custom styling will 
                   foreground of camera/laser buttons +
                   foreground of conversational shape buttons +
                   background of active conversational shape buttons
-|color2 (#16160e)|Background|background of latchinguser buttons +
+|color2 (#16160e)|Background|background of latching user buttons +
                   background of camera/laser buttons +
-                  background of gcode editor active line +
+                  background of G-Code editor active line +
                   background of conversational shape buttons
 |color3 (#ffee06)|Highlight|background of active latching user buttons +
                   background of active camera/laser buttons +
-                  foreground of gcode editor cursor
-|color4 (#36362e)|Alt Background|background of gcode display active line
+                  foreground of G-Code editor cursor
+|color4 (#36362e)|Alt Background|background of G-Code display active line
 |color5 (#b0b0b0)|foreground of disabled buttons
 |===
+
+[[qt_default_styling]]
+
+=== Returning To The Default Styling
+
+The user may return to the default styling at any time by following the following steps:
+
+. Close QtPlasmaC if open.
+. Delete qtplasmac.qss from the machine config folder.
+. Delete qtplasmac_custom.qss from the machine config folder (if it exists).
+. Comment out or delete any CUSTOM_STYLE lines from the <machine_name>.ini file.
+. Open qtplasmac.prefs and delete the "[COLOR_OPTIONS]" section. Save the file.
+
+The next time QtPlasmaC is loaded all custom styling will be removed and the default styling will return.
+
+Below is an example of the section to be deleted from qtplasmac.prefs:
+
+----
+[COLOR_OPTIONS]
+Foreground = #ffee06
+Highlight = #ffee06
+LED = #ffee06
+Background = #16160e
+Background Alt = #36362e
+Frames = #ffee06
+Estop = #ff0000
+Disabled = #b0b0b0
+Preview = #000000
+----
 
 == QtPlasmaC Advanced Topics
 
@@ -2942,7 +2994,7 @@ This will load the setup program:
 
 image::images/qtplasmac_setup.png[width=400,align="center"]
 
-press 'SELECT' which will open a file dialog, select the .ini file of the QtPlasmaC configuration then press 'SWITCH'. The installation type will now be changed.
+press 'SELECT' which will open a file dialog box, select the .ini file of the QtPlasmaC configuration then press 'SWITCH'. The installation type will now be changed.
 
 === QtPlasmaC Specific G-Codes
 

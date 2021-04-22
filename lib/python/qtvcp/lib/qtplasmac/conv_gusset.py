@@ -125,7 +125,7 @@ def preview(P, W):
                 outTmp.write('g1 x{:.6f} y{:.6f}\n'.format(x3, y3))
                 x4 = x0 + radius * math.cos(angle)
                 y4 = y0 + radius * math.sin(angle)
-                if W.rButton.text().startswith('Radius'):
+                if W.rButton.text().startswith('RADIUS'):
                     if y2 >= y0:
                         outTmp.write('g3 x{:.6f} y{:.6f} i{:.6f} j{:.6f}\n'.format(x4, y4 , x0 - x3, y0 - y3))
                     else:
@@ -209,12 +209,13 @@ def auto_preview(P, W):
         preview(P, W)
 
 def entry_changed(P, W, widget):
-    if not W.liEntry.text() or float(W.liEntry.text()) == 0:
+    char = P.conv_entry_changed(widget)
+    if char == "operator" or not W.liEntry.text() or float(W.liEntry.text()) == 0 \
+                or float(W.liEntry.text()) <= float(W.kerf_width.value()) / 2:
         W.kOffset.setEnabled(False)
         W.kOffset.setChecked(False)
     else:
         W.kOffset.setEnabled(True)
-    P.conv_entry_changed(widget)
 
 def add_shape_to_file(P, W):
     P.conv_add_shape_to_file()
@@ -249,7 +250,7 @@ def widgets(P, W):
     W.rButton = QPushButton('RADIUS')
     W.rEntry = QLineEdit()
     W.aLabel = QLabel('ANGLE')
-    W.aEntry = QLineEdit()
+    W.aEntry = QLineEdit(objectName='aEntry')
     W.preview = QPushButton('PREVIEW')
     W.add = QPushButton('ADD')
     W.undo = QPushButton('UNDO')
