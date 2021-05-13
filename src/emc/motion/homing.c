@@ -11,6 +11,7 @@
 * Copyright (c) 2004 All rights reserved.
 ********************************************************************/
 #include <stdio.h>
+#include <unistd.h>
 #include "rtapi.h"
 #include "rtapi_math.h"
 #include "motion.h"
@@ -76,6 +77,7 @@ typedef enum {
 } home_state_t;
 
 static int  immediate_state;
+static int  my_state = -1;
 
 // local per-joint data (includes hal pin data)
 typedef struct {
@@ -101,6 +103,10 @@ typedef struct {
   int          home_distance_coded_os;
   int		   home_distance_coded_pw;
   double       encoder_scale;
+  double	   encoder_offset;
+  double 	   raw_trigger_1;
+  double       raw_trigger_2;
+  int 		   nr_ref_marks;
 } home_local_data;
 
 static  home_local_data H[EMCMOT_MAX_JOINTS];
@@ -227,6 +233,8 @@ void homing_init(void)
 		H[i].home_distance_coded_os   =  0;
 		H[i].home_distance_coded_pw   =  2;
 		H[i].encoder_scale   =  1.0;
+		H[i].encoder_offset = 0.0;
+		H[i].nr_ref_marks    =  0;
     }
 }
 
@@ -618,9 +626,9 @@ void do_homing(void)
 
     int joint_num;
     emcmot_joint_t *joint;
-    double offset, tmp, raw_trigger_1, raw_trigger_2;
+    double offset, tmp;
     int home_sw_active, homing_flag;
-	int nr_ref_marks = 0;
+	//int nr_ref_marks = 0;
 
     homing_flag = 0;
     if (emcmotStatus->motion_state != EMCMOT_MOTION_FREE) {
@@ -640,12 +648,10 @@ void do_homing(void)
 	if (H[joint_num].home_state != HOME_IDLE) {
 	    homing_flag = 1; /* at least one joint is homing */
 	}
-	printf("blablabla\n");
-	printf("Pin motor position raw: %lf \n", joint->motor_pos_raw_fb);
 	
 	int test_position; 
 	test_position = distance_coded_position(23117, 12577, 1000, 20, 2);
-	printf("Position: %d\n" , test_position);
+	//printf("Position: %d\n" , test_position);
 
 	/* when an joint is homing, 'check_for_faults()' ignores its limit
 	   switches, so that this code can do the right thing with them. Once
@@ -662,14 +668,22 @@ void do_homing(void)
 	   switch(home_state) runs only once per servo period. Do _not_ set
 	   'immediate_state' true unless you also change 'home_state', unless
 	   you want an infinite loop! */
+	
 	do {
 	    immediate_state = 0;
+		if(my_state != H[joint_num].home_state){
+			my_state = H[joint_num].home_state;
+			printf("Home_state: %d\n" , my_state);
+		}
+		
 	    switch (H[joint_num].home_state) {
 	    case HOME_IDLE:
+		
 		/* nothing to do */
 		break;
 
 	    case HOME_START:
+		
 		/* This state is responsible for getting the homing process
 		   started.  It doesn't actually do anything, it simply
 		   determines what state is next */
@@ -696,7 +710,7 @@ void do_homing(void)
 		/* reset delay counter */
 		H[joint_num].pause_timer = 0;
 		/* figure out exactly what homing sequence is needed */
-                if (H[joint_num].home_flags & HOME_ABSOLUTE_ENCODER) {
+                if ((H[joint_num].home_flags & HOME_ABSOLUTE_ENCODER) && !(H[joint_num].home_flags & HOME_DISTANCE_CODED)) {
                     H[joint_num].home_flags &= ~HOME_IS_SHARED; // shared not applicable
                     H[joint_num].home_state = HOME_SET_SWITCH_POSITION;
                     immediate_state = 1;
@@ -713,12 +727,14 @@ void do_homing(void)
 		break;
 
 	    case HOME_UNLOCK:
+		
 		// unlock now
 		emcmotSetRotaryUnlock(joint_num, 1);
 		H[joint_num].home_state = HOME_UNLOCK_WAIT;
 		break;
 
 	    case HOME_UNLOCK_WAIT:
+		
 		// if not yet unlocked, continue waiting
 		if ((H[joint_num].home_flags & HOME_UNLOCK_FIRST) &&
 		    !emcmotGetRotaryIsUnlocked(joint_num)) break;
@@ -751,6 +767,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_INITIAL_BACKOFF_START:
+		
 		/* This state is called if the homing sequence starts at a
 		   location where the home switch is already tripped. It
 		   starts a move away from the switch. */
@@ -774,6 +791,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_INITIAL_BACKOFF_WAIT:
+		
 		/* This state is called while the machine is moving off of
 		   the home switch.  It terminates when the switch is cleared
 		   successfully.  If the move ends or hits a limit before it
@@ -791,6 +809,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_INITIAL_SEARCH_START:
+		
 		/* This state is responsible for starting a move toward the
 		   home switch.  This move is at 'search_vel', which can be
 		   fairly fast, because once the switch is found another
@@ -822,6 +841,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_INITIAL_SEARCH_WAIT:
+		
 		/* This state is called while the machine is looking for the
 		   home switch.  It terminates when the switch is found.  If
 		   the move ends or hits a limit before it finds the switch,
@@ -839,6 +859,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_SET_COARSE_POSITION:
+		
 		/* This state is called after the first time the switch is
 		   found.  At this point, we are approximately home. Although
 		   we will do another slower pass to get the exact home
@@ -872,6 +893,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_FINAL_BACKOFF_START:
+		
 		/* This state is called once the approximate location of the
 		   switch has been found.  It is responsible for starting a
 		   move that will back off of the switch in preparation for a
@@ -904,6 +926,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_FINAL_BACKOFF_WAIT:
+		
 		/* This state is called while the machine is moving off of
 		   the home switch after finding its approximate location.
 		   It terminates when the switch is cleared successfully.  If
@@ -922,6 +945,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_RISE_SEARCH_START:
+		
 		/* This state is called to start the final search for the
 		   point where the home switch trips.  It moves at
 		   'latch_vel' and looks for a rising edge on the switch */
@@ -953,6 +977,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_RISE_SEARCH_WAIT:
+		
 		/* This state is called while the machine is moving towards
 		   the home switch on its final, low speed pass.  It
 		   terminates when the switch is detected. If the move ends
@@ -979,6 +1004,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_FALL_SEARCH_START:
+		
 		/* This state is called to start the final search for the
 		   point where the home switch releases.  It moves at
 		   'latch_vel' and looks for a falling edge on the switch */
@@ -1010,6 +1036,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_FALL_SEARCH_WAIT:
+		
 		/* This state is called while the machine is moving away from
 		   the home switch on its final, low speed pass.  It
 		   terminates when the switch is cleared. If the move ends or
@@ -1036,6 +1063,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_SET_SWITCH_POSITION:
+		
 		/* This state is called when the machine has determined the
 		   switch position as accurately as possible.  It sets the
 		   current joint position to 'home_offset', which is the
@@ -1066,6 +1094,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_INDEX_ONLY_START:
+		
 		/* This state is used if the machine has been pre-positioned
 		   near the home position, and simply needs to find the
 		   next index pulse.  It starts a move at latch_vel, and
@@ -1106,6 +1135,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_INDEX_SEARCH_START:
+		
 		/* This state is called after the machine has made a low
 		   speed pass to determine the limit switch location. It
 		   sets index-enable, which tells the encoder driver to
@@ -1120,6 +1150,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_INDEX_SEARCH_WAIT:
+		
 		/* This state is called after the machine has found the
 		   home switch and "armed" the encoder counter to reset on
 		   the next index pulse. It continues at low speed until
@@ -1140,35 +1171,45 @@ void do_homing(void)
 		break;
 
 	    case HOME_SET_INDEX_POSITION:
+		
 
-			if((H[joint_num].home_flags & HOME_DISTANCE_CODED) && (nr_ref_marks < 1)) {
+			if((H[joint_num].home_flags & HOME_DISTANCE_CODED) && (H[joint_num].nr_ref_marks < 1)) {
 				/* Searches for the first reference mark and store its raw encoder position
 				in 'raw_trigger_1'. Then it resets the homing state to HOMEO_INDEX_SEARCH_START
 				to look for the the second homing mark */
+				printf("HOME_SET_INDEX_POSITION 1\n");
+				printf("nr_ref_marks %d\n", H[joint_num].nr_ref_marks);
+        		H[joint_num].raw_trigger_1 = joint->motor_pos_raw_fb - round(joint->pos_fb * H[joint_num].encoder_scale);
+        		++H[joint_num].nr_ref_marks;
+        		// H[joint_num].home_state = HOME_INDEX_SEARCH_START; //sent it back to index mark search
+				H[joint_num].home_state = HOME_INDEX_ONLY_START; //sent it back to index mark search
 
-        		raw_trigger_1 = joint->motor_pos_raw_fb - round(joint->pos_fb * H[joint_num].encoder_scale);
-        		++nr_ref_marks;
-        		H[joint_num].home_state = HOME_INDEX_SEARCH_START; //sent it back to index mark search
-
-    		}else if((H[joint_num].home_flags & HOME_DISTANCE_CODED)  && (nr_ref_marks < 2)){
-
-        		raw_trigger_2 = joint->motor_pos_raw_fb - round(joint->pos_fb * H[joint_num].encoder_scale);
-        		++nr_ref_marks;
+    		}else if((H[joint_num].home_flags & HOME_DISTANCE_CODED)  && (H[joint_num].nr_ref_marks < 2)){
+				printf("HOME_SET_INDEX_POSITION 2\n");
+				printf("nr_ref_marks %d\n", H[joint_num].nr_ref_marks);
+        		H[joint_num].raw_trigger_2 = joint->motor_pos_raw_fb - round(joint->pos_fb * H[joint_num].encoder_scale);
+        		++H[joint_num].nr_ref_marks;
 
         		// calculate and set the 'home_offset' based on raw_trigger_pos_1, raw_trigger_pos_2 
 				// int over_sampling = 20;
 				// int index_pulse_width = 2;
 				
+				// H[joint_num].raw_trigger_1 = -357263;
+				// H[joint_num].raw_trigger_2 = -367423;
+
 				int position = distance_coded_position(
-									raw_trigger_1, 
-									raw_trigger_2, 
+									H[joint_num].raw_trigger_1, 
+									H[joint_num].raw_trigger_2, 
 									H[joint_num].home_distance_coded_n, 
 									H[joint_num].home_distance_coded_os,
 									H[joint_num].home_distance_coded_pw
 									);
 
-				H[joint_num].home_offset = (double)position / H[joint_num].encoder_scale;  
+				H[joint_num].encoder_offset = (double)position / H[joint_num].encoder_scale;  
+				printf("Home offset: %lf\n", H[joint_num].home_offset);
 			}else{
+				printf("HOME_SET_INDEX_POSITION 3\n");
+				printf("nr_ref_marks %d\n", H[joint_num].nr_ref_marks);
 				/* This state is called when the encoder has been reset at
 				the index pulse position.  It sets the current joint 
 				position to 'home_offset', which is the location of the
@@ -1184,7 +1225,7 @@ void do_homing(void)
 				/* Special case: encoder does not reset on index pulse.
 				This moves the internal position but does not affect
 				the motor position */
-				offset = H[joint_num].home_offset - joint->pos_fb;
+				offset = H[joint_num].home_offset + H[joint_num].encoder_offset - joint->pos_fb;
 				joint->pos_cmd          += offset;
 				joint->pos_fb           += offset;
 				joint->free_tp.curr_pos += offset;
@@ -1194,11 +1235,12 @@ void do_homing(void)
 				/* next state */
 				H[joint_num].home_state = HOME_FINAL_MOVE_START;
 				immediate_state = 1;
-				nr_ref_marks = 0;
+				H[joint_num].nr_ref_marks = 0;
 				break;
 			}	
 
 	    case HOME_FINAL_MOVE_START:
+		
 		/* This state is called once the joint coordinate system is
 		   set properly.  It moves to the actual 'home' position,
 		   which is not neccessarily the position of the home switch
@@ -1220,6 +1262,13 @@ void do_homing(void)
                     }
 
 		}
+
+		// don't do any final move after movement has stopped
+		if (H[joint_num].home_flags & HOME_NO_FINAL_MOVE) {
+			H[joint_num].home_state = HOME_LOCK;
+			break;
+		}
+
                 // negative H[joint_num].home_sequence means sync final move
                 //          defer final move until all joints in sequence are ready
                 if  (        (H[joint_num].home_sequence  < 0)
@@ -1263,6 +1312,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_FINAL_MOVE_WAIT:
+		
 		/* This state is called while the machine makes its final
 		   move to the home position.  It terminates when the machine 
 		   arrives at the final location. If the move hits a limit
@@ -1289,6 +1339,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_LOCK:
+		
 		if (H[joint_num].home_flags & HOME_UNLOCK_FIRST) {
 		    emcmotSetRotaryUnlock(joint_num, 0);
 		} else {
@@ -1298,6 +1349,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_LOCK_WAIT:
+		
 		// if not yet locked, continue waiting
 		if ((H[joint_num].home_flags & HOME_UNLOCK_FIRST) &&
 		    emcmotGetRotaryIsUnlocked(joint_num)) break;
@@ -1309,6 +1361,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_FINISHED:
+		
                 H[joint_num].homing = 0;
                 H[joint_num].homed = 1;
 		H[joint_num].at_home = 1;
@@ -1325,6 +1378,7 @@ void do_homing(void)
 		break;
 
 	    case HOME_ABORT:
+		
                 H[joint_num].homing = 0;
                 H[joint_num].homed = 0;
                 H[joint_num].at_home = 0;
