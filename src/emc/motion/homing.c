@@ -1177,11 +1177,28 @@ void do_homing(void)
 				/* Searches for the first reference mark and store its raw encoder position
 				in 'raw_trigger_1'. Then it resets the homing state to HOMEO_INDEX_SEARCH_START
 				to look for the the second homing mark */
+
+				if(	H[joint_num].pause_timer < (1 * servo_freq) ){
+					H[joint_num].pause_timer++;
+					break;
+				}
+				H[joint_num].pause_timer = 0;
+
 				printf("HOME_SET_INDEX_POSITION 1\n");
 				printf("nr_ref_marks %d\n", H[joint_num].nr_ref_marks);
         		H[joint_num].raw_trigger_1 = joint->motor_pos_raw_fb - round(joint->pos_fb * H[joint_num].encoder_scale);
         		++H[joint_num].nr_ref_marks;
         		// H[joint_num].home_state = HOME_INDEX_SEARCH_START; //sent it back to index mark search
+
+				
+				// joint->motor_offset = - H[joint_num].home_offset - H[joint_num].encoder_offset;
+				// 	joint->pos_fb = joint->motor_pos_fb -
+				// 	(joint->backlash_filt + joint->motor_offset);
+				// joint->pos_cmd = joint->pos_fb;
+				// joint->free_tp.curr_pos = joint->pos_fb;
+
+				
+
 				H[joint_num].home_state = HOME_INDEX_ONLY_START; //sent it back to index mark search
 
     		}else if((H[joint_num].home_flags & HOME_DISTANCE_CODED)  && (H[joint_num].nr_ref_marks < 2)){
@@ -1206,7 +1223,7 @@ void do_homing(void)
 									);
 
 				H[joint_num].encoder_offset = (double)position / H[joint_num].encoder_scale;  
-				printf("Home offset: %lf\n", H[joint_num].home_offset);
+				printf("Home offset: %lf\n", H[joint_num].encoder_offset);
 			}else{
 				printf("HOME_SET_INDEX_POSITION 3\n");
 				printf("nr_ref_marks %d\n", H[joint_num].nr_ref_marks);
@@ -1215,7 +1232,7 @@ void do_homing(void)
 				position to 'home_offset', which is the location of the
 				index pulse in joint coordinates. */
 				/* set the current position to 'home_offset' */
-				joint->motor_offset = - H[joint_num].home_offset;
+				joint->motor_offset = - H[joint_num].home_offset - H[joint_num].encoder_offset;
 				joint->pos_fb = joint->motor_pos_fb -
 					(joint->backlash_filt + joint->motor_offset);
 				joint->pos_cmd = joint->pos_fb;
