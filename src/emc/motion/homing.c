@@ -1178,7 +1178,7 @@ void do_homing(void)
 				in 'raw_trigger_1'. Then it resets the homing state to HOMEO_INDEX_SEARCH_START
 				to look for the the second homing mark */
 
-				if(	H[joint_num].pause_timer < (1 * servo_freq) ){
+				if(	H[joint_num].pause_timer < (10 * servo_freq) ){
 					H[joint_num].pause_timer++;
 					break;
 				}
@@ -1187,6 +1187,9 @@ void do_homing(void)
 				printf("HOME_SET_INDEX_POSITION 1\n");
 				printf("nr_ref_marks %d\n", H[joint_num].nr_ref_marks);
         		H[joint_num].raw_trigger_1 = joint->motor_pos_raw_fb - round(joint->pos_fb * H[joint_num].encoder_scale);
+				printf("joint->motor_pos_raw_fb: %d\n", joint->motor_pos_raw_fb);
+				printf("joint->pos_fb: %lf\n", joint->pos_fb);
+				printf("raw_trigger_1: %lf\n", H[joint_num].raw_trigger_1);
         		++H[joint_num].nr_ref_marks;
         		// H[joint_num].home_state = HOME_INDEX_SEARCH_START; //sent it back to index mark search
 
@@ -1205,6 +1208,7 @@ void do_homing(void)
 				printf("HOME_SET_INDEX_POSITION 2\n");
 				printf("nr_ref_marks %d\n", H[joint_num].nr_ref_marks);
         		H[joint_num].raw_trigger_2 = joint->motor_pos_raw_fb - round(joint->pos_fb * H[joint_num].encoder_scale);
+				printf("raw_trigger_2: %lf\n", H[joint_num].raw_trigger_2);
         		++H[joint_num].nr_ref_marks;
 
         		// calculate and set the 'home_offset' based on raw_trigger_pos_1, raw_trigger_pos_2 

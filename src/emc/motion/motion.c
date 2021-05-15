@@ -858,6 +858,7 @@ static int init_comm_buffers(void)
 	joint->backlash_vel = 0.0;
 	joint->motor_pos_cmd = 0.0;
 	joint->motor_pos_fb = 0.0;
+    joint->motor_pos_raw_fb = 0.0;
 	joint->pos_fb = 0.0;
 	joint->ferror = 0.0;
 	joint->ferror_limit = joint->min_ferror;

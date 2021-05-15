@@ -374,6 +374,7 @@ static void process_inputs(void)
 	}
 	/* copy data from HAL to joint structure */
 	joint->motor_pos_fb = *(joint_data->motor_pos_fb);
+    joint->motor_pos_raw_fb = *(joint_data->motor_pos_raw_fb);
 	/* calculate pos_fb */
 	if (( get_homing_at_index_search_wait(joint_num) ) &&
 	    ( get_index_enable(joint_num) == 0 )) {
