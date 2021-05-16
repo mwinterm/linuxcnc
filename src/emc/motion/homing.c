@@ -1159,13 +1159,80 @@ void do_homing(void)
 		   before an index pulse occurs, the home is aborted. */
 		/* has an index pulse arrived yet? encoder driver clears
 		   enable when it does */
-		if ( H[joint_num].index_enable == 0 ) {
-		    /* yes, stop motion */
-		    joint->free_tp.enable = 0;
-		    /* go to next step */
-		    H[joint_num].home_state = HOME_SET_INDEX_POSITION;
-		    immediate_state = 1;
-		    break;
+
+		if ((H[joint_num].home_flags & HOME_DISTANCE_CODED) && (H[joint_num].nr_ref_marks < 1))
+		{
+			if (H[joint_num].index_enable == 0)
+			{
+				
+				if (H[joint_num].pause_timer < (0.1 * servo_freq))
+				{
+					H[joint_num].pause_timer++;
+					break;
+				}
+				H[joint_num].pause_timer = 0;
+
+				printf("HOME_SET_INDEX_POSITION 1\n");
+				printf("nr_ref_marks %d\n", H[joint_num].nr_ref_marks);
+				H[joint_num].raw_trigger_1 = joint->motor_pos_raw_fb;
+				++H[joint_num].nr_ref_marks;
+				printf("joint->motor_pos_raw_fb: %d\n", joint->motor_pos_raw_fb);
+				// printf("joint->pos_fb: %lf\n", joint->pos_fb);
+				// printf("raw_trigger_1: %lf\n", H[joint_num].raw_trigger_1);
+				H[joint_num].index_enable = 1;
+				
+				break;
+			}
+		}
+		else if ((H[joint_num].home_flags & HOME_DISTANCE_CODED) && (H[joint_num].nr_ref_marks < 2))
+		{
+			if (H[joint_num].index_enable == 0)
+			{
+
+				if (H[joint_num].pause_timer < (0.1 * servo_freq))
+				{
+					H[joint_num].pause_timer++;
+					break;
+				}
+				H[joint_num].pause_timer = 0;
+
+				printf("HOME_SET_INDEX_POSITION 2\n");
+				printf("nr_ref_marks %d\n", H[joint_num].nr_ref_marks);
+				H[joint_num].raw_trigger_2 = joint->motor_pos_raw_fb;
+				printf("joint->motor_pos_raw_fb: %d\n", joint->motor_pos_raw_fb);
+				// printf("joint->pos_fb: %lf\n", joint->pos_fb);
+				// printf("raw_trigger_2: %lf\n", H[joint_num].raw_trigger_2);
+				++H[joint_num].nr_ref_marks;
+
+				int position = distance_coded_position(
+					H[joint_num].raw_trigger_1,
+					H[joint_num].raw_trigger_2,
+					H[joint_num].home_distance_coded_n,
+					H[joint_num].home_distance_coded_os,
+					H[joint_num].home_distance_coded_pw);
+
+				H[joint_num].encoder_offset = (double)position / H[joint_num].encoder_scale;
+				printf("encoder_offset: %lf\n", H[joint_num].encoder_offset);
+			}
+		}
+		else
+		{
+
+			if (H[joint_num].index_enable == 0)
+			{
+				if (H[joint_num].pause_timer < (0.5 * servo_freq))
+				{
+					H[joint_num].pause_timer++;
+					break;
+				}
+				H[joint_num].pause_timer = 0;
+				/* yes, stop motion */
+				joint->free_tp.enable = 0;
+				/* go to next step */
+				H[joint_num].home_state = HOME_SET_INDEX_POSITION;
+				immediate_state = 1;
+				break;
+			}
 		}
 		home_do_moving_checks(joint,joint_num);
 		break;

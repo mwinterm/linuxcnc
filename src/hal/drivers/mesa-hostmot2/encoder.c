@@ -505,6 +505,13 @@ int hm2_encoder_parse_md(hostmot2_t *hm2, int md_index) {
                 goto fail1;
             }
 
+              rtapi_snprintf(name, sizeof(name), "%s.encoder.%02d.index-rawcounts", hm2->llio->name, i);
+            r = hal_pin_s32_new(name, HAL_OUT, &(hm2->encoder.instance[i].hal.pin.index_rawcounts), hm2->llio->comp_id);
+            if (r < 0) {
+                HM2_ERR("error adding pin '%s', aborting\n", name);
+                goto fail1;
+            }
+
             rtapi_snprintf(name, sizeof(name), "%s.encoder.%02d.rawlatch", hm2->llio->name, i);
             r = hal_pin_s32_new(name, HAL_OUT, &(hm2->encoder.instance[i].hal.pin.rawlatch), hm2->llio->comp_id);
             if (r < 0) {
@@ -599,6 +606,13 @@ int hm2_encoder_parse_md(hostmot2_t *hm2, int md_index) {
                 goto fail1;
             }
 
+            rtapi_snprintf(name, sizeof(name), "%s.encoder.%02d.reset-on-index", hm2->llio->name, i);
+            r = hal_pin_bit_new(name, HAL_IN, &(hm2->encoder.instance[i].hal.pin.reset_on_index), hm2->llio->comp_id);
+            if (r < 0) {
+                HM2_ERR("error adding pin '%s', aborting\n", name);
+                goto fail1;
+            }
+
             rtapi_snprintf(name, sizeof(name), "%s.encoder.%02d.input-a", hm2->llio->name, i);
             r = hal_pin_bit_new(name, HAL_OUT, &(hm2->encoder.instance[i].hal.pin.input_a), hm2->llio->comp_id);
             if (r < 0) {
@@ -678,6 +692,7 @@ int hm2_encoder_parse_md(hostmot2_t *hm2, int md_index) {
 
             *hm2->encoder.instance[i].hal.pin.reset = 0;
             *hm2->encoder.instance[i].hal.pin.index_enable = 0;
+            *hm2->encoder.instance[i].hal.pin.reset_on_index = 1;
 
             hm2->encoder.instance[i].hal.param.scale = 1.0;
             hm2->encoder.instance[i].hal.param.index_invert = 0;
@@ -818,7 +833,10 @@ static void hm2_encoder_instance_update_rawcounts_and_handle_index(hostmot2_t *h
             if (reg_count_diff > 32768) reg_count_diff -= 65536;
             if (reg_count_diff < -32768) reg_count_diff += 65536;
 
-            e->zero_offset = prev_rawcounts + reg_count_diff;
+            if(*e->hal.pin.reset_on_index){
+                e->zero_offset = prev_rawcounts + reg_count_diff;
+            }
+            *e->hal.pin.index_rawcounts = prev_rawcounts;
             *e->hal.pin.index_enable = 0;
         }
     } else if(e->prev_control & HM2_ENCODER_LATCH_ON_PROBE) {

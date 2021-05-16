@@ -273,6 +273,7 @@ typedef struct {
 
         struct {
             hal_s32_t *rawcounts;    // raw encoder counts
+            hal_s32_t *index_rawcounts;    // raw encoder counts at index position
             hal_s32_t *rawlatch;     // raw encoder of latch
             hal_s32_t *count;        // (rawcounts - zero_offset)
             hal_s32_t *count_latch;  // (rawlatch - zero_offset)
@@ -286,6 +287,7 @@ typedef struct {
             hal_bit_t *latch_polarity;
             hal_bit_t *quadrature_error;
             hal_bit_t *quadrature_error_enable;
+            hal_bit_t *reset_on_index;
             hal_bit_t *input_a;
             hal_bit_t *input_b;
             hal_bit_t *input_idx;
