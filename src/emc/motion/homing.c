@@ -104,8 +104,8 @@ typedef struct {
   int		   home_distance_coded_pw;
   double       encoder_scale;
   double	   encoder_offset;
-  double 	   raw_trigger_1;
-  double       raw_trigger_2;
+  int   	   raw_trigger_1;
+  int          raw_trigger_2;
   int 		   nr_ref_marks;
 } home_local_data;
 
@@ -401,7 +401,7 @@ home_sequence_state_t get_home_sequence_state(void) {
    return sequence_state;
 }
 
-int distance_coded_position(double raw_trigger_1, double raw_trigger_2, 
+int distance_coded_position(int raw_trigger_1, int raw_trigger_2, 
 							int nominal_steps, int over_sampling, 
 							int index_pulswidth){
 	/* This function calculates the absolut position of the second trigger signal 
@@ -417,7 +417,7 @@ int distance_coded_position(double raw_trigger_1, double raw_trigger_2,
 	the index-signal after interpolation and quadrature in units of regular distance
 	pulses (typically the value is two). */
 
-	int Mrr = (round(raw_trigger_1) - round(raw_trigger_2))/over_sampling;
+	int Mrr = (raw_trigger_1- raw_trigger_2)/over_sampling;
 	int R = 2*ABS(Mrr)-nominal_steps;
 	int P1 = ((ABS(R) - SGN(R) - 1)*nominal_steps/2 
 			+ (SGN(R)-SGN(Mrr))*ABS(Mrr)/2)*over_sampling 
@@ -1256,7 +1256,7 @@ void do_homing(void)
         		H[joint_num].raw_trigger_1 = joint->motor_pos_raw_fb - round(joint->pos_fb * H[joint_num].encoder_scale);
 				printf("joint->motor_pos_raw_fb: %d\n", joint->motor_pos_raw_fb);
 				printf("joint->pos_fb: %lf\n", joint->pos_fb);
-				printf("raw_trigger_1: %lf\n", H[joint_num].raw_trigger_1);
+				printf("raw_trigger_1: %d\n", H[joint_num].raw_trigger_1);
         		++H[joint_num].nr_ref_marks;
         		// H[joint_num].home_state = HOME_INDEX_SEARCH_START; //sent it back to index mark search
 
@@ -1275,7 +1275,7 @@ void do_homing(void)
 				printf("HOME_SET_INDEX_POSITION 2\n");
 				printf("nr_ref_marks %d\n", H[joint_num].nr_ref_marks);
         		H[joint_num].raw_trigger_2 = joint->motor_pos_raw_fb - round(joint->pos_fb * H[joint_num].encoder_scale);
-				printf("raw_trigger_2: %lf\n", H[joint_num].raw_trigger_2);
+				printf("raw_trigger_2: %d\n", H[joint_num].raw_trigger_2);
         		++H[joint_num].nr_ref_marks;
 
         		// calculate and set the 'home_offset' based on raw_trigger_pos_1, raw_trigger_pos_2 
