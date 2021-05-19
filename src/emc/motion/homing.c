@@ -1205,6 +1205,7 @@ void do_homing(void)
 				/* yes, stop motion */
 				joint->free_tp.enable = 0;
 				/* go to next step */
+				H[joint_num].nr_ref_marks = 0;
 				H[joint_num].home_state = HOME_SET_INDEX_POSITION;
 				immediate_state = 1;
 				break;
